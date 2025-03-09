@@ -27,6 +27,8 @@ contract FastJPEGFactoryTest is BaseTest {
         user3 = vm.addr(3);
         user4 = vm.addr(4);
         
+        vm.deal(fastJpegOwner, 0 ether);
+
         // Fund the test users with some ETH for transactions
         vm.deal(user1, 100 ether);
         vm.deal(user2, 100 ether);
@@ -76,7 +78,6 @@ contract FastJPEGFactoryTest is BaseTest {
         // Check token balance
         assertEq(token.balanceOf(user1), 0, "User1 should receive 0 tokens");
     }
-
     function testBuyTokens() public {
         address tokenAddress = jpegFactory.launchToken("Fast JPEG Test Token", "FJTT");
 
@@ -89,6 +90,10 @@ contract FastJPEGFactoryTest is BaseTest {
 
         // Check token balance
         assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 100, "User1 should receive 100 tokens");
+
+        // Calculate expected fee
+        uint256 expectedFee = (price * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
+        assertEq(fastJpegOwner.balance, expectedFee, "Owner should have received the correct fee");
     }
 
     function testSellTokens() public {
@@ -103,6 +108,10 @@ contract FastJPEGFactoryTest is BaseTest {
 
         // Check token balance
         assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 100, "User1 should receive 100 tokens");
+        
+        // Calculate expected buy fee
+        uint256 expectedBuyFee = (price * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
+        assertEq(fastJpegOwner.balance, expectedBuyFee, "Owner should have received the correct buy fee");
 
         // Approve tokens for selling
         vm.startPrank(user1);
@@ -114,5 +123,12 @@ contract FastJPEGFactoryTest is BaseTest {
 
         // Check token balance
         assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 50, "User1 should have 50 tokens remaining");
+
+        // Calculate sell price and expected sell fee
+        uint256 sellPrice = jpegFactory.calculateSellPrice(tokenAddress, 50);
+        uint256 expectedSellFee = (sellPrice * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
+        
+        // Check that owner has received both buy and sell fees
+        assertEq(fastJpegOwner.balance, expectedBuyFee + expectedSellFee, "Owner should have received both buy and sell fees");
     }
 }
