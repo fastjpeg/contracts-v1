@@ -157,11 +157,14 @@ contract FastJPEGFactoryTest is BaseTest {
         address tokenAddress = jpegFactory.launchTokenAirdrop{ value: 1 ether }("Fast JPEG Test Token", "FJTT", airdropRecipients);
 
         // Check token balance
-        assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 50_000_000 * 10**18, "User1 should receive 50k tokens");
-        assertEq(FastJPEGToken(tokenAddress).balanceOf(user2), 50_000_000 * 10**18, "User2 should receive 50k tokens");
-        assertEq(FastJPEGToken(tokenAddress).balanceOf(user3), 50_000_000 * 10**18, "User3 should receive 50k tokens");
-        assertEq(FastJPEGToken(tokenAddress).balanceOf(user4), 50_000_000 * 10**18, "User4 should receive 50k tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 40_000_000 * 10**18, "User1 should receive 40m tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user2), 40_000_000 * 10**18, "User2 should receive 40m tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user3), 40_000_000 * 10**18, "User3 should receive 40m tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user4), 40_000_000 * 10**18, "User4 should receive 40m tokens");
 
+        // Check that onwer has recieved trade fee
+        uint256 tradeFee = (1 ether * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
+        assertEq(fastJpegOwner.balance, tradeFee, "Owner should have received the correct trade fee");
         // check tokens remaining
         (, , uint256 tokensRemaining, , ,) = jpegFactory.launchedTokens(tokenAddress);
         assertEq(tokensRemaining, 800_000_000 * 10**18, "Tokens remaining should be 800m");

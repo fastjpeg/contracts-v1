@@ -23,7 +23,7 @@ contract FastJPEGFactory is Ownable {
     // Constants
     uint256 public constant TOTAL_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
     uint256 public constant BONDING_SUPPLY = 800_000_000 * 10**18; // 800 million tokens
-    uint256 public constant AIRDROP_SUPPLY = 200_000_000 * 10**18; // 200 million tokens
+    uint256 public constant AIRDROP_SUPPLY = 160_000_000 * 10**18; // 160 million tokens
     uint256 public constant AERODROME_THRESHOLD = 5 ether;
     uint256 public constant KING_OF_HILL_THRESHOLD = 3 ether;
     uint256 public constant MAX_AIRDROP_ETH = 1 ether;
@@ -57,7 +57,7 @@ contract FastJPEGFactory is Ownable {
     event TokensBought(address indexed token, address indexed buyer, uint256 amount, uint256 ethSpent);
     event TokensSold(address indexed token, address indexed seller, uint256 amount, uint256 ethReceived);
     event TokenPromoted(address indexed token, address indexed pool);
-    event AirdropClaimed(address indexed token, address indexed recipient, uint256 amount);
+    event AirdropIssued(address indexed token, address indexed recipient, uint256 amount);
     event LiquidityLocked(address indexed token, address indexed pool, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity);
 
     constructor(address _poolFactory, address _router) Ownable() {
@@ -96,10 +96,20 @@ contract FastJPEGFactory is Ownable {
         tokenInfo.isPromoted = false;
         tokenInfo.airdropEthUsed = 0;
 
+
         // If user sent 1 ETH and provided recipients, perform airdrop
         if (msg.value >= 1 ether && airdropRecipients.length > 0) {
             uint256 airdropAmount = 1 ether;
-            tokenInfo.airdropEthUsed = airdropAmount;
+            
+            // Calculate fee for airdrop (using TRADE_FEE_BPS)
+            uint256 airdropFee = (airdropAmount * TRADE_FEE_BPS) / BPS_DENOMINATOR;
+            uint256 netAirdropAmount = airdropAmount - airdropFee;
+            
+            // Send fee to contract owner
+            payable(owner()).transfer(airdropFee);
+            
+            // Record the net amount used for airdrop
+            tokenInfo.airdropEthUsed = netAirdropAmount;
             
             // Calculate tokens to distribute from the airdrop supply (AIRDROP_SUPPLY)
             uint256 tokensToDistribute = AIRDROP_SUPPLY;
@@ -108,8 +118,8 @@ contract FastJPEGFactory is Ownable {
             uint256 tokensPerRecipient = tokensToDistribute / airdropRecipients.length;
             for (uint256 i = 0; i < airdropRecipients.length; i++) {
                 require(airdropRecipients[i] != address(0), "Invalid recipient address");
-                FastJPEGToken(tokenInfo.tokenAddress).mint(airdropRecipients[i], tokensPerRecipient);
-                emit AirdropClaimed(address(newToken), airdropRecipients[i], tokensPerRecipient);
+                newToken.mint(airdropRecipients[i], tokensPerRecipient);
+                emit AirdropIssued(address(newToken), airdropRecipients[i], tokensPerRecipient);
             }
             
             // Refund excess ETH if any
