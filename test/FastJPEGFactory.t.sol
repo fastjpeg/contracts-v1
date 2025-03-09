@@ -62,7 +62,8 @@ contract FastJPEGFactoryTest is BaseTest {
         FastJPEGToken token = FastJPEGToken(tokenAddress);
         assertEq(token.name(), tokenName, "Token name should match");
         assertEq(token.symbol(), tokenSymbol, "Token symbol should match");
-        
+        assertEq(token.totalSupply(), 1_000_000_000 * 10**18, "Token total supply should be 1b");
+
         // Get the token info from the factory
         (address storedTokenAddress, uint256 ethCollected, uint256 tokensRemaining, bool isPromoted, uint256 airdropEthUsed, address poolAddress) = 
             jpegFactory.launchedTokens(tokenAddress);

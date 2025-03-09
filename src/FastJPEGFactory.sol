@@ -86,7 +86,7 @@ contract FastJPEGFactory is Ownable {
      */
     function launchTokenAirdrop(string memory name, string memory symbol, address[] memory airdropRecipients) public payable returns (address) {
         // Deploy new token - only mint bonding supply to contract initially
-        FastJPEGToken newToken = new FastJPEGToken(name, symbol, BONDING_SUPPLY);
+        FastJPEGToken newToken = new FastJPEGToken(name, symbol, TOTAL_SUPPLY);
         
         // Initialize token info
         TokenInfo storage tokenInfo = launchedTokens[address(newToken)];
