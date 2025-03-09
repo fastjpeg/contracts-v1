@@ -81,6 +81,9 @@ contract FastJPEGFactoryTest is BaseTest {
     function testBuyTokens() public {
         address tokenAddress = jpegFactory.launchToken("Fast JPEG Test Token", "FJTT");
 
+        // Get initial tokensRemaining
+        (, , uint256 initialTokensRemaining, , ,) = jpegFactory.launchedTokens(tokenAddress);
+        
         // Calculate the price for buying 100 tokens
         uint256 price = jpegFactory.calculateBuyPrice(tokenAddress, 100);
         
@@ -94,6 +97,10 @@ contract FastJPEGFactoryTest is BaseTest {
         // Calculate expected fee
         uint256 expectedFee = (price * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
         assertEq(fastJpegOwner.balance, expectedFee, "Owner should have received the correct fee");
+        
+        // Check that tokensRemaining was updated correctly
+        (, , uint256 updatedTokensRemaining, , ,) = jpegFactory.launchedTokens(tokenAddress);
+        assertEq(updatedTokensRemaining, initialTokensRemaining - 100, "Tokens remaining should be reduced by 100");
     }
 
     function testSellTokens() public {
@@ -108,6 +115,9 @@ contract FastJPEGFactoryTest is BaseTest {
 
         // Check token balance
         assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 100, "User1 should receive 100 tokens");
+        
+        // Get tokensRemaining after buying
+        (, , uint256 tokensRemainingAfterBuy, , ,) = jpegFactory.launchedTokens(tokenAddress);
         
         // Calculate expected buy fee
         uint256 expectedBuyFee = (price * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
@@ -130,5 +140,9 @@ contract FastJPEGFactoryTest is BaseTest {
         
         // Check that owner has received both buy and sell fees
         assertEq(fastJpegOwner.balance, expectedBuyFee + expectedSellFee, "Owner should have received both buy and sell fees");
+        
+        // Check that tokensRemaining was updated correctly after selling
+        (, , uint256 tokensRemainingAfterSell, , ,) = jpegFactory.launchedTokens(tokenAddress);
+        assertEq(tokensRemainingAfterSell, tokensRemainingAfterBuy + 50, "Tokens remaining should be increased by 50 after selling");
     }
 }
