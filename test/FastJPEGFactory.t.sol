@@ -145,4 +145,25 @@ contract FastJPEGFactoryTest is BaseTest {
         (, , uint256 tokensRemainingAfterSell, , ,) = jpegFactory.launchedTokens(tokenAddress);
         assertEq(tokensRemainingAfterSell, tokensRemainingAfterBuy + 50, "Tokens remaining should be increased by 50 after selling");
     }
+
+    function testLuanchTokenWithAirdrop() public {
+        address[] memory airdropRecipients = new address[](4);
+        airdropRecipients[0] = user1;
+        airdropRecipients[1] = user2;
+        airdropRecipients[2] = user3;
+        airdropRecipients[3] = user4;
+
+        vm.prank(user1);
+        address tokenAddress = jpegFactory.launchTokenAirdrop{ value: 1 ether }("Fast JPEG Test Token", "FJTT", airdropRecipients);
+
+        // Check token balance
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 50_000_000 * 10**18, "User1 should receive 50k tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user2), 50_000_000 * 10**18, "User2 should receive 50k tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user3), 50_000_000 * 10**18, "User3 should receive 50k tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user4), 50_000_000 * 10**18, "User4 should receive 50k tokens");
+
+        // check tokens remaining
+        (, , uint256 tokensRemaining, , ,) = jpegFactory.launchedTokens(tokenAddress);
+        assertEq(tokensRemaining, 800_000_000 * 10**18, "Tokens remaining should be 800m");
+    }
 }

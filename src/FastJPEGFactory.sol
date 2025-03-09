@@ -12,12 +12,18 @@ contract FastJPEGToken is ERC20 {
     constructor(string memory name, string memory symbol, uint256 initialSupply) ERC20(name, symbol) {
         _mint(msg.sender, initialSupply);
     }
+    
+    // Added function to allow minting tokens to specific addresses
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
 }
 
 contract FastJPEGFactory is Ownable {
     // Constants
     uint256 public constant TOTAL_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
     uint256 public constant BONDING_SUPPLY = 800_000_000 * 10**18; // 800 million tokens
+    uint256 public constant AIRDROP_SUPPLY = 200_000_000 * 10**18; // 200 million tokens
     uint256 public constant AERODROME_THRESHOLD = 5 ether;
     uint256 public constant KING_OF_HILL_THRESHOLD = 3 ether;
     uint256 public constant MAX_AIRDROP_ETH = 1 ether;
@@ -63,13 +69,24 @@ contract FastJPEGFactory is Ownable {
     }
 
     /**
-     * @dev Launches a new token with the specified name and symbol
+     * @dev Launches a new token with the specified name and symbol without airdrop recipients
      * @param name The name of the token
      * @param symbol The symbol of the token
      */
-    function launchToken(string memory name, string memory symbol) external returns (address) {
-        // Deploy new token
-        FastJPEGToken newToken = new FastJPEGToken(name, symbol, TOTAL_SUPPLY);
+    function launchToken(string memory name, string memory symbol) public payable returns (address) {
+        address[] memory emptyRecipients = new address[](0);
+        return launchTokenAirdrop(name, symbol, emptyRecipients);
+    }
+
+    /**
+     * @dev Launches a new token with the specified name and symbol
+     * @param name The name of the token
+     * @param symbol The symbol of the token
+     * @param airdropRecipients Optional array of addresses to airdrop tokens to (if msg.value >= 1 ETH)
+     */
+    function launchTokenAirdrop(string memory name, string memory symbol, address[] memory airdropRecipients) public payable returns (address) {
+        // Deploy new token - only mint bonding supply to contract initially
+        FastJPEGToken newToken = new FastJPEGToken(name, symbol, BONDING_SUPPLY);
         
         // Initialize token info
         TokenInfo storage tokenInfo = launchedTokens[address(newToken)];
@@ -78,6 +95,31 @@ contract FastJPEGFactory is Ownable {
         tokenInfo.ethCollected = 0;
         tokenInfo.isPromoted = false;
         tokenInfo.airdropEthUsed = 0;
+
+        // If user sent 1 ETH and provided recipients, perform airdrop
+        if (msg.value >= 1 ether && airdropRecipients.length > 0) {
+            uint256 airdropAmount = 1 ether;
+            tokenInfo.airdropEthUsed = airdropAmount;
+            
+            // Calculate tokens to distribute from the airdrop supply (AIRDROP_SUPPLY)
+            uint256 tokensToDistribute = AIRDROP_SUPPLY;
+            
+            // Distribute tokens evenly among recipients by minting directly to them
+            uint256 tokensPerRecipient = tokensToDistribute / airdropRecipients.length;
+            for (uint256 i = 0; i < airdropRecipients.length; i++) {
+                require(airdropRecipients[i] != address(0), "Invalid recipient address");
+                FastJPEGToken(tokenInfo.tokenAddress).mint(airdropRecipients[i], tokensPerRecipient);
+                emit AirdropClaimed(address(newToken), airdropRecipients[i], tokensPerRecipient);
+            }
+            
+            // Refund excess ETH if any
+            if (msg.value > 1 ether) {
+                payable(msg.sender).transfer(msg.value - 1 ether);
+            }
+        } else if (msg.value > 0) {
+            // Refund any ETH if no airdrop performed
+            payable(msg.sender).transfer(msg.value);
+        }
 
         emit TokenLaunched(address(newToken), msg.sender);
         return address(newToken);
@@ -246,37 +288,6 @@ contract FastJPEGFactory is Ownable {
 
         emit TokenPromoted(tokenAddress, poolAddress);
         emit LiquidityLocked(tokenAddress, poolAddress, amountToken, amountETH, liquidity);
-    }
-
-    /**
-     * @dev Claims airdrop tokens for the caller
-     * @param tokenAddress The address of the token
-     * @param amount The amount of tokens to claim
-     */
-    function claimAirdrop(address tokenAddress, uint256 amount) external {
-        TokenInfo storage tokenInfo = launchedTokens[tokenAddress];
-        require(tokenInfo.tokenAddress != address(0), "Token not found");
-        require(tokenInfo.airdropEthUsed < MAX_AIRDROP_ETH, "Airdrop limit reached");
-
-        uint256 price = calculateBuyPrice(tokenAddress, amount);
-        require(tokenInfo.airdropEthUsed + price <= MAX_AIRDROP_ETH, "Exceeds airdrop limit");
-
-        // Calculate airdrop fee using BPS
-        uint256 airdropFee = (amount * AIRDROP_FEE_BPS) / BPS_DENOMINATOR;
-        uint256 netAmount = amount - airdropFee;
-
-        // Update state
-        tokenInfo.tokensRemaining -= amount;
-        tokenInfo.airdropEthUsed += price;
-        tokenInfo.contributions[msg.sender] += netAmount;
-
-        // Transfer tokens to user
-        ERC20(tokenAddress).transfer(msg.sender, netAmount);
-        
-        // Transfer airdrop fee to FastJPEGLauncher
-        ERC20(tokenAddress).transfer(owner(), airdropFee);
-
-        emit AirdropClaimed(tokenAddress, msg.sender, netAmount);
     }
 
     // Function to receive ETH
