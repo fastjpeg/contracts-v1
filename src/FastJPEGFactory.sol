@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@aerodrome/contracts/interfaces/factories/IPoolFactory.sol";
-import "@aerodrome/contracts/interfaces/IRouter.sol";
-import "@aerodrome/contracts/interfaces/IPool.sol";
+import "../lib/contracts/contracts/interfaces/factories/IPoolFactory.sol";
+import "../lib/contracts/contracts/interfaces/IRouter.sol";
+import "../lib/contracts/contracts/interfaces/IPool.sol";
 
 // Custom ERC20 implementation that can be instantiated
 contract FastJPEGToken is ERC20 {
@@ -53,9 +53,10 @@ contract FastJPEGFactory is Ownable {
     event AirdropClaimed(address indexed token, address indexed recipient, uint256 amount);
     event LiquidityLocked(address indexed token, address indexed pool, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity);
 
-    constructor(address _poolFactory, address _router) Ownable(msg.sender) {
+    constructor(address _poolFactory, address _router) Ownable() {
         poolFactory = IPoolFactory(_poolFactory);
         router = IRouter(_router);
+        _transferOwnership(msg.sender);
     }
 
     /**
