@@ -76,4 +76,18 @@ contract FastJPEGFactoryTest is BaseTest {
         // Check token balance
         assertEq(token.balanceOf(user1), 0, "User1 should receive 0 tokens");
     }
+
+    function testBuyTokens() public {
+        address tokenAddress = jpegFactory.launchToken("Fast JPEG Test Token", "FJTT");
+
+        // Calculate the price for buying 100 tokens
+        uint256 price = jpegFactory.calculatePrice(tokenAddress, 100);
+        
+        // Impersonate user1 and send ETH with the transaction
+        vm.prank(user1);
+        jpegFactory.buyTokens{value: price}(tokenAddress, 100);
+
+        // Check token balance
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 100, "User1 should receive 100 tokens");
+    }
 }
