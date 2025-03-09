@@ -122,6 +122,11 @@ contract FastJPEGLauncher is Ownable {
         }
 
         emit TokensBought(tokenAddress, msg.sender, amount, price);
+        
+        // Auto-promote token if threshold is reached and not already promoted
+        if (tokenInfo.ethCollected >= AERODROME_THRESHOLD && !tokenInfo.isPromoted) {
+            _promoteToken(tokenAddress);
+        }
     }
 
     /**
@@ -134,6 +139,15 @@ contract FastJPEGLauncher is Ownable {
         require(!tokenInfo.isPromoted, "Token already promoted");
         require(tokenInfo.ethCollected >= AERODROME_THRESHOLD, "Insufficient ETH collected");
 
+        _promoteToken(tokenAddress);
+    }
+    
+    /**
+     * @dev Internal function to promote a token to Aerodrome
+     * @param tokenAddress The address of the token to promote
+     */
+    function _promoteToken(address tokenAddress) internal {
+        TokenInfo storage tokenInfo = launchedTokens[tokenAddress];
         tokenInfo.isPromoted = true;
 
         // Transfer promotion fee to contract owner
