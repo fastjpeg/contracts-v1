@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@aerodrome/contracts/interfaces/factories/IPoolFactory.sol";
+import "@aerodrome/contracts/interfaces/IRouter.sol";
+import "@aerodrome/contracts/interfaces/IPool.sol";
 
 // Custom ERC20 implementation that can be instantiated
 contract FastJPEGToken is ERC20 {
@@ -22,6 +25,10 @@ contract FastJPEGLauncher is Ownable {
     uint256 public constant LIQUIDITY_LOCK = 0.5 ether;
     uint256 public constant CURVE_EXPONENT = 2; // Quadratic curve
 
+    // Aerodrome contracts
+    IPoolFactory public immutable poolFactory;
+    IRouter public immutable router;
+
     // State variables
     struct TokenInfo {
         address tokenAddress;
@@ -30,6 +37,7 @@ contract FastJPEGLauncher is Ownable {
         bool isPromoted;
         mapping(address => uint256) contributions;
         uint256 airdropEthUsed;
+        address poolAddress;
     }
 
     mapping(address => TokenInfo) public launchedTokens;
@@ -37,10 +45,14 @@ contract FastJPEGLauncher is Ownable {
     // Events
     event TokenLaunched(address indexed token, address indexed creator);
     event TokensBought(address indexed token, address indexed buyer, uint256 amount, uint256 ethSpent);
-    event TokenPromoted(address indexed token);
+    event TokenPromoted(address indexed token, address indexed pool);
     event AirdropClaimed(address indexed token, address indexed recipient, uint256 amount);
+    event LiquidityLocked(address indexed token, address indexed pool, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity);
 
-    constructor() Ownable(msg.sender) {}
+    constructor(address _poolFactory, address _router) Ownable(msg.sender) {
+        poolFactory = IPoolFactory(_poolFactory);
+        router = IRouter(_router);
+    }
 
     /**
      * @dev Launches a new token with the specified name and symbol
@@ -127,12 +139,30 @@ contract FastJPEGLauncher is Ownable {
         // Transfer promotion fee to contract owner
         payable(owner()).transfer(PROMOTION_FEE);
 
-        // Lock liquidity on Aerodrome (this would integrate with Aerodrome's contracts)
-        // For now, we just transfer the ETH to this contract
-        // In production, this would call Aerodrome's liquidity provision function
-        require(address(this).balance >= LIQUIDITY_LOCK, "Insufficient balance for liquidity lock");
+        // Create pool on Aerodrome
+        address poolAddress = poolFactory.createPool(tokenAddress, address(0), false); // false for volatile pool
+        tokenInfo.poolAddress = poolAddress;
 
-        emit TokenPromoted(tokenAddress);
+        // Calculate liquidity amounts
+        uint256 tokenAmount = TOTAL_SUPPLY / 100; // 1% of total supply for initial liquidity
+        uint256 ethAmount = LIQUIDITY_LOCK;
+
+        // Approve router to spend tokens
+        ERC20(tokenAddress).approve(address(router), tokenAmount);
+
+        // Add liquidity to Aerodrome
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = router.addLiquidityETH{value: ethAmount}(
+            tokenAddress,
+            false, // volatile pool
+            tokenAmount,
+            tokenAmount, // min token amount
+            ethAmount, // min ETH amount
+            address(this), // liquidity tokens are locked in the contract
+            block.timestamp + 1800 // 30 minutes deadline
+        );
+
+        emit TokenPromoted(tokenAddress, poolAddress);
+        emit LiquidityLocked(tokenAddress, poolAddress, amountToken, amountETH, liquidity);
     }
 
     /**
