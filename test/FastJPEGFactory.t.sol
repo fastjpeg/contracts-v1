@@ -14,8 +14,7 @@ contract FastJPEGFactoryTest is BaseTest {
         jpegFactory = new FastJPEGFactory(address(factory), address(router));
     }
 
-    function testFactory() public {
-        assert(true);
-        // assertEq(jpegFactory.owner(), msg.sender);
+    function testFactoryOwner() public {
+        assertEq(jpegFactory.owner(), address(this));
     }
 }
