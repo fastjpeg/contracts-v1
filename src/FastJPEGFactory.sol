@@ -49,6 +49,7 @@ contract FastJPEGFactory is Ownable {
     // Events
     event TokenLaunched(address indexed token, address indexed creator);
     event TokensBought(address indexed token, address indexed buyer, uint256 amount, uint256 ethSpent);
+    event TokensSold(address indexed token, address indexed seller, uint256 amount, uint256 ethReceived);
     event TokenPromoted(address indexed token, address indexed pool);
     event AirdropClaimed(address indexed token, address indexed recipient, uint256 amount);
     event LiquidityLocked(address indexed token, address indexed pool, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity);
@@ -88,7 +89,7 @@ contract FastJPEGFactory is Ownable {
      * @param amount The amount of tokens to buy
      * @return The price in ETH
      */
-    function calculatePrice(address tokenAddress, uint256 amount) public view returns (uint256) {
+    function calculateBuyPrice(address tokenAddress, uint256 amount) public view returns (uint256) {
         TokenInfo storage tokenInfo = launchedTokens[tokenAddress];
         require(tokenInfo.tokenAddress != address(0), "Token not found");
         require(amount <= tokenInfo.tokensRemaining, "Insufficient tokens remaining");
@@ -97,6 +98,26 @@ contract FastJPEGFactory is Ownable {
         // Price = BASE_PRICE * (PRICE_MULTIPLIER/100)^(soldTokens/1e18)
         uint256 soldTokens = BONDING_SUPPLY - tokenInfo.tokensRemaining;
         uint256 newSoldTokens = soldTokens + amount;
+        
+        uint256 currentPrice = BASE_PRICE * (PRICE_MULTIPLIER ** (soldTokens / 1e18)) / (100 ** (soldTokens / 1e18));
+        uint256 newPrice = BASE_PRICE * (PRICE_MULTIPLIER ** (newSoldTokens / 1e18)) / (100 ** (newSoldTokens / 1e18));
+        return ((currentPrice + newPrice) * amount) / 2;
+    }
+
+    /**
+     * @dev Calculates the sell price for tokens based on the bonding curve
+     * @param tokenAddress The address of the token
+     * @param amount The amount of tokens to sell
+     * @return The amount of ETH to receive
+     */
+    function calculateSellPrice(address tokenAddress, uint256 amount) public view returns (uint256) {
+        TokenInfo storage tokenInfo = launchedTokens[tokenAddress];
+        require(tokenInfo.tokenAddress != address(0), "Token not found");
+        
+        uint256 soldTokens = BONDING_SUPPLY - tokenInfo.tokensRemaining;
+        require(amount <= soldTokens, "Cannot sell more than bought");
+        
+        uint256 newSoldTokens = soldTokens - amount;
         
         uint256 currentPrice = BASE_PRICE * (PRICE_MULTIPLIER ** (soldTokens / 1e18)) / (100 ** (soldTokens / 1e18));
         uint256 newPrice = BASE_PRICE * (PRICE_MULTIPLIER ** (newSoldTokens / 1e18)) / (100 ** (newSoldTokens / 1e18));
@@ -113,7 +134,7 @@ contract FastJPEGFactory is Ownable {
         require(tokenInfo.tokenAddress != address(0), "Token not found");
         require(amount <= tokenInfo.tokensRemaining, "Insufficient tokens remaining");
 
-        uint256 price = calculatePrice(tokenAddress, amount);
+        uint256 price = calculateBuyPrice(tokenAddress, amount);
         require(msg.value >= price, "Insufficient ETH sent");
 
         // Calculate trade fee using BPS
@@ -142,6 +163,39 @@ contract FastJPEGFactory is Ownable {
         if (tokenInfo.ethCollected >= AERODROME_THRESHOLD && !tokenInfo.isPromoted) {
             _promoteToken(tokenAddress);
         }
+    }
+
+    /**
+     * @dev Sells tokens back to the bonding curve
+     * @param tokenAddress The address of the token to sell
+     * @param amount The amount of tokens to sell
+     */
+    function sellTokens(address tokenAddress, uint256 amount) external {
+        TokenInfo storage tokenInfo = launchedTokens[tokenAddress];
+        require(tokenInfo.tokenAddress != address(0), "Token not found");
+        require(tokenInfo.contributions[msg.sender] >= amount, "Insufficient tokens owned");
+        
+        uint256 sellPrice = calculateSellPrice(tokenAddress, amount);
+        
+        // Calculate trade fee using BPS
+        uint256 tradeFee = (sellPrice * TRADE_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 netSellPrice = sellPrice - tradeFee;
+        
+        // Update state
+        tokenInfo.tokensRemaining += amount;
+        tokenInfo.ethCollected -= netSellPrice;
+        tokenInfo.contributions[msg.sender] -= amount;
+        
+        // Transfer tokens from user to contract
+        require(ERC20(tokenAddress).transferFrom(msg.sender, address(this), amount), "Token transfer failed");
+        
+        // Transfer ETH to user
+        payable(msg.sender).transfer(netSellPrice);
+        
+        // Transfer trade fee to owner
+        payable(owner()).transfer(tradeFee);
+        
+        emit TokensSold(tokenAddress, msg.sender, amount, netSellPrice);
     }
 
     /**
@@ -204,7 +258,7 @@ contract FastJPEGFactory is Ownable {
         require(tokenInfo.tokenAddress != address(0), "Token not found");
         require(tokenInfo.airdropEthUsed < MAX_AIRDROP_ETH, "Airdrop limit reached");
 
-        uint256 price = calculatePrice(tokenAddress, amount);
+        uint256 price = calculateBuyPrice(tokenAddress, amount);
         require(tokenInfo.airdropEthUsed + price <= MAX_AIRDROP_ETH, "Exceeds airdrop limit");
 
         // Calculate airdrop fee using BPS
