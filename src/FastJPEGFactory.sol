@@ -14,7 +14,7 @@ contract FastJPEGToken is ERC20 {
     }
 }
 
-contract FastJPEGLauncher is Ownable {
+contract FastJPEGFactory is Ownable {
     // Constants
     uint256 public constant TOTAL_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
     uint256 public constant BONDING_SUPPLY = 800_000_000 * 10**18; // 800 million tokens
