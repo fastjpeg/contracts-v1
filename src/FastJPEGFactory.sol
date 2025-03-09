@@ -19,11 +19,15 @@ contract FastJPEGFactory is Ownable {
     uint256 public constant TOTAL_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
     uint256 public constant BONDING_SUPPLY = 800_000_000 * 10**18; // 800 million tokens
     uint256 public constant AERODROME_THRESHOLD = 5 ether;
-    uint256 public constant KING_OF_HILL_THRESHOLD = 2.5 ether;
+    uint256 public constant KING_OF_HILL_THRESHOLD = 3 ether;
     uint256 public constant MAX_AIRDROP_ETH = 1 ether;
     uint256 public constant PROMOTION_FEE = 0.5 ether;
-    uint256 public constant LIQUIDITY_LOCK = 0.5 ether;
-    uint256 public constant CURVE_EXPONENT = 2; // Quadratic curve
+    uint256 public constant LIQUIDITY_LOCK = 0.8 ether;
+    uint256 public constant TRADE_FEE_BPS = 100; // 1% = 100 BPS
+    uint256 public constant AIRDROP_FEE_BPS = 100; // 1% = 100 BPS
+    uint256 public constant BPS_DENOMINATOR = 10000; // 100% = 10000 BPS
+    uint256 public constant BASE_PRICE = 0.0001 ether;
+    uint256 public constant PRICE_MULTIPLIER = 115;
 
     // Aerodrome contracts
     IPoolFactory public immutable poolFactory;
@@ -86,13 +90,15 @@ contract FastJPEGFactory is Ownable {
         require(tokenInfo.tokenAddress != address(0), "Token not found");
         require(amount <= tokenInfo.tokensRemaining, "Insufficient tokens remaining");
 
-        // Calculate price based on quadratic bonding curve
-        // Price = (current_eth + new_eth)^2 - current_eth^2
-        uint256 currentEth = tokenInfo.ethCollected;
+        // Calculate price based on exponential bonding curve
+        // Price = BASE_PRICE * (PRICE_MULTIPLIER/100)^(soldTokens/1e18)
         uint256 soldTokens = BONDING_SUPPLY - tokenInfo.tokensRemaining;
-        uint256 newEth = (((soldTokens + amount) * currentEth) / soldTokens) ** CURVE_EXPONENT;
+        uint256 newSoldTokens = soldTokens + amount;
         
-        return newEth - (currentEth ** CURVE_EXPONENT);
+        uint256 currentPrice = BASE_PRICE * (PRICE_MULTIPLIER ** (soldTokens / 1e18)) / (100 ** (soldTokens / 1e18));
+        uint256 newPrice = BASE_PRICE * (PRICE_MULTIPLIER ** (newSoldTokens / 1e18)) / (100 ** (newSoldTokens / 1e18));
+        
+        return ((currentPrice + newPrice) * amount) / 2;
     }
 
     /**
@@ -108,13 +114,20 @@ contract FastJPEGFactory is Ownable {
         uint256 price = calculatePrice(tokenAddress, amount);
         require(msg.value >= price, "Insufficient ETH sent");
 
+        // Calculate trade fee using BPS
+        uint256 tradeFee = (price * TRADE_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 netPrice = price - tradeFee;
+
         // Update state
         tokenInfo.tokensRemaining -= amount;
-        tokenInfo.ethCollected += price;
+        tokenInfo.ethCollected += netPrice;
         tokenInfo.contributions[msg.sender] += amount;
 
         // Transfer tokens
         ERC20(tokenAddress).transfer(msg.sender, amount);
+
+        // Transfer trade fee to FastJPEGLauncher
+        payable(owner()).transfer(tradeFee);
 
         // Refund excess ETH
         if (msg.value > price) {
@@ -192,15 +205,22 @@ contract FastJPEGFactory is Ownable {
         uint256 price = calculatePrice(tokenAddress, amount);
         require(tokenInfo.airdropEthUsed + price <= MAX_AIRDROP_ETH, "Exceeds airdrop limit");
 
+        // Calculate airdrop fee using BPS
+        uint256 airdropFee = (amount * AIRDROP_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 netAmount = amount - airdropFee;
+
         // Update state
         tokenInfo.tokensRemaining -= amount;
         tokenInfo.airdropEthUsed += price;
-        tokenInfo.contributions[msg.sender] += amount;
+        tokenInfo.contributions[msg.sender] += netAmount;
 
-        // Transfer tokens
-        ERC20(tokenAddress).transfer(msg.sender, amount);
+        // Transfer tokens to user
+        ERC20(tokenAddress).transfer(msg.sender, netAmount);
+        
+        // Transfer airdrop fee to FastJPEGLauncher
+        ERC20(tokenAddress).transfer(owner(), airdropFee);
 
-        emit AirdropClaimed(tokenAddress, msg.sender, amount);
+        emit AirdropClaimed(tokenAddress, msg.sender, netAmount);
     }
 
     // Function to receive ETH
