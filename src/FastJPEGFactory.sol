@@ -54,6 +54,8 @@ contract FastJPEGFactory is Ownable {
     event LiquidityLocked(address indexed token, address indexed pool, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity);
 
     constructor(address _poolFactory, address _router) Ownable() {
+        // require(_poolFactory != address(0), "Invalid pool factory");
+        // require(_router != address(0), "Invalid router");
         poolFactory = IPoolFactory(_poolFactory);
         router = IRouter(_router);
         _transferOwnership(msg.sender);
