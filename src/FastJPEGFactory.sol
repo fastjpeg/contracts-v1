@@ -5,9 +5,8 @@ import { FastJPEGToken } from "./FastJPEGToken.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../lib/contracts/contracts/interfaces/factories/IPoolFactory.sol";
-import "../lib/contracts/contracts/interfaces/IRouter.sol";
-import "../lib/contracts/contracts/interfaces/IPool.sol";
+import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 
 contract FastJPEGFactory is Ownable {
@@ -26,8 +25,8 @@ contract FastJPEGFactory is Ownable {
     uint256 public constant AIRDROP_ETH = 1 ether; // 1 ETH to airdrop
     
     // Aerodrome contracts
-    IPoolFactory public immutable poolFactory;
-    IRouter public immutable router;
+    IUniswapV2Factory public immutable factory;
+    IUniswapV2Router02 public immutable router;
 
     // State variables
     struct TokenInfo {
@@ -48,9 +47,9 @@ contract FastJPEGFactory is Ownable {
     event AirdropIssued(address indexed token, address indexed recipient, uint256 amount);
     event LiquidityLocked(address indexed token, address indexed pool, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity);
 
-    constructor(address _poolFactory, address _router) Ownable() {
-        poolFactory = IPoolFactory(_poolFactory);
-        router = IRouter(_router);
+    constructor(address _factory, address _router) Ownable() {
+        factory = IUniswapV2Factory(_factory);
+        router = IUniswapV2Router02(_router);
         _transferOwnership(msg.sender);
     }
     /**
