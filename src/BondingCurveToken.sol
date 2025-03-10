@@ -8,14 +8,16 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 contract BondingCurveToken is ERC20, Ownable {
     using Math for uint256;
 
-    uint256 public constant MAX_SUPPLY = 800_000_000 * 10**18; // 800M tokens with 18 decimals
+    uint256 public constant TOTAL_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
+    uint256 public constant PRE_LAUNCH_MAX_SUPPLY = 800_000_000 * 10**18; // 800M tokens with 18 decimals
     uint256 public constant MAX_ETH = 5 ether; // 5 ETH to purchase all tokens
+    uint256 public constant FEE_PERCENTAGE = 1; // 1% fee
     
     // Tracks total ETH collected from purchases
     uint256 private _reserveBalance;
 
-    constructor(string memory name, string memory symbol, uint256 initialSupply) ERC20(name, symbol) {
-        _mint(msg.sender, initialSupply);
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
+        _mint(msg.sender, TOTAL_SUPPLY);
     }
 
     /**
@@ -25,7 +27,7 @@ contract BondingCurveToken is ERC20, Ownable {
         require(msg.value > 0, "Must send ETH");
         
         uint256 currentSupply = totalSupply();
-        require(currentSupply < MAX_SUPPLY, "Max supply reached");
+        require(currentSupply < PRE_LAUNCH_MAX_SUPPLY, "Max supply reached");
         
         // Calculate tokens to mint based on the bonding curve
         uint256 tokensToMint = calculatePurchaseAmount(msg.value, currentSupply);
@@ -33,8 +35,8 @@ contract BondingCurveToken is ERC20, Ownable {
         uint256 ethNeeded = msg.value;
         
         // Ensure we don't exceed max supply
-        if (currentSupply + tokensToMint > MAX_SUPPLY) {
-            tokensToMint = MAX_SUPPLY - currentSupply;
+        if (currentSupply + tokensToMint > PRE_LAUNCH_MAX_SUPPLY) {
+            tokensToMint = PRE_LAUNCH_MAX_SUPPLY - currentSupply;
             
             // Calculate actual ETH needed and refund excess
             ethNeeded = calculatePriceForTokens(tokensToMint, currentSupply);
@@ -43,8 +45,15 @@ contract BondingCurveToken is ERC20, Ownable {
             }
         }
         
-        // Update reserve balance with the ETH used
-        _reserveBalance += ethNeeded;
+        // Calculate 1% fee
+        uint256 fee = (ethNeeded * FEE_PERCENTAGE) / 100;
+        uint256 ethAfterFee = ethNeeded - fee;
+        
+        // Send fee to owner
+        payable(owner()).transfer(fee);
+        
+        // Update reserve balance with the ETH used (after fee)
+        _reserveBalance += ethAfterFee;
         
         // Mint tokens to the buyer
         _mint(msg.sender, tokensToMint);
@@ -64,14 +73,21 @@ contract BondingCurveToken is ERC20, Ownable {
         uint256 ethToReturn = calculateSaleReturn(tokenAmount, currentSupply);
         require(ethToReturn <= _reserveBalance, "Insufficient reserve");
         
+        // Calculate 1% fee
+        uint256 fee = (ethToReturn * FEE_PERCENTAGE) / 100;
+        uint256 ethAfterFee = ethToReturn - fee;
+        
         // Burn tokens
         _burn(msg.sender, tokenAmount);
         
         // Update reserve balance
         _reserveBalance -= ethToReturn;
         
-        // Send ETH to seller
-        payable(msg.sender).transfer(ethToReturn);
+        // Send fee to owner
+        payable(owner()).transfer(fee);
+        
+        // Send ETH to seller (after fee)
+        payable(msg.sender).transfer(ethAfterFee);
     }
     
     /**
@@ -81,10 +97,10 @@ contract BondingCurveToken is ERC20, Ownable {
      * @return Amount of tokens to mint
      */
     function calculatePurchaseAmount(uint256 ethAmount, uint256 currentSupply) public pure returns (uint256) {
-        // For a quadratic curve: T = sqrt((E * MAX_SUPPLY²) / MAX_ETH + currentSupply²) - currentSupply
+        // For a quadratic curve: T = sqrt((E * PRE_LAUNCH_MAX_SUPPLY²) / MAX_ETH + currentSupply²) - currentSupply
         
-        // Calculate: (E * MAX_SUPPLY²) / MAX_ETH
-        uint256 numerator = ethAmount * (MAX_SUPPLY ** 2);
+        // Calculate: (E * PRE_LAUNCH_MAX_SUPPLY²) / MAX_ETH
+        uint256 numerator = ethAmount * (PRE_LAUNCH_MAX_SUPPLY ** 2);
         uint256 term1 = numerator / MAX_ETH;
         
         // Add currentSupply²
@@ -104,7 +120,7 @@ contract BondingCurveToken is ERC20, Ownable {
      * @return Amount of ETH needed
      */
     function calculatePriceForTokens(uint256 tokenAmount, uint256 currentSupply) public pure returns (uint256) {
-        // For a quadratic curve: E = (MAX_ETH * ((currentSupply + T)² - currentSupply²)) / MAX_SUPPLY²
+        // For a quadratic curve: E = (MAX_ETH * ((currentSupply + T)² - currentSupply²)) / PRE_LAUNCH_MAX_SUPPLY²
         
         uint256 newSupply = currentSupply + tokenAmount;
         
@@ -113,9 +129,9 @@ contract BondingCurveToken is ERC20, Ownable {
         uint256 currentSupplySquared = currentSupply ** 2;
         uint256 supplyDeltaSquared = newSupplySquared - currentSupplySquared;
         
-        // Calculate: (MAX_ETH * supplyDeltaSquared) / MAX_SUPPLY²
+        // Calculate: (MAX_ETH * supplyDeltaSquared) / PRE_LAUNCH_MAX_SUPPLY²
         uint256 numerator = MAX_ETH * supplyDeltaSquared;
-        uint256 denominator = MAX_SUPPLY ** 2;
+        uint256 denominator = PRE_LAUNCH_MAX_SUPPLY ** 2;
         
         return numerator / denominator;
     }
@@ -138,9 +154,9 @@ contract BondingCurveToken is ERC20, Ownable {
     function getCurrentPrice() public view returns (uint256) {
         uint256 currentSupply = totalSupply();
         
-        // For a quadratic curve, the marginal price is the derivative: p = (2 * MAX_ETH * currentSupply) / MAX_SUPPLY²
+        // For a quadratic curve, the marginal price is the derivative: p = (2 * MAX_ETH * currentSupply) / PRE_LAUNCH_MAX_SUPPLY²
         uint256 numerator = 2 * MAX_ETH * currentSupply;
-        uint256 denominator = MAX_SUPPLY ** 2;
+        uint256 denominator = PRE_LAUNCH_MAX_SUPPLY ** 2;
         
         return numerator / denominator;
     }

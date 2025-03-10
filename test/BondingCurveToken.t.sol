@@ -9,7 +9,7 @@ contract BondingCurveTokenTest is BaseTest {
     BondingCurveToken public bondingCurveToken;
 
     function _setUp() public override {
-        bondingCurveToken = new BondingCurveToken("Bonding Curve Token", "BCT", 1_000_000_000 * 1e18);
+        bondingCurveToken = new BondingCurveToken("Bonding Curve Token", "BCT");
     }
 
     function testCalculatePurchaseAmount() public {
@@ -29,5 +29,14 @@ contract BondingCurveTokenTest is BaseTest {
         assertEq(tokensToMint5Ether, 800000000000000000000000000);        
     }
 
+    function testCalculateSaleReturn() public {
+        uint256 priceFor100Tokens = bondingCurveToken.calculateSaleReturn(100_000_000 * 1e18, 400_000_000 * 1e18);  
+        assertEq(priceFor100Tokens, 546875000000000000);
 
+        uint256 priceFor200Tokens = bondingCurveToken.calculateSaleReturn(200_000_000 * 1e18, 400_000_000 * 1e18);  
+        assertEq(priceFor200Tokens, 937500000000000000);
+
+        uint256 priceFor300Tokens = bondingCurveToken.calculateSaleReturn(800_000_000 * 1e18, 800_000_000 * 1e18); 
+        assertEq(priceFor300Tokens, 5 ether); 
+    }        
 }
