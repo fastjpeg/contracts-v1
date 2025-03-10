@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
-
+import {console} from "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -8,17 +8,16 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 contract BondingCurveToken is ERC20, Ownable {
     using Math for uint256;
 
-    uint256 public constant TOTAL_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
     uint256 public constant PRE_LAUNCH_MAX_SUPPLY = 800_000_000 * 10**18; // 800M tokens with 18 decimals
     uint256 public constant MAX_ETH = 5 ether; // 5 ETH to purchase all tokens
     uint256 public constant FEE_PERCENTAGE = 1; // 1% fee
     
     // Tracks total ETH collected from purchases
     uint256 private _reserveBalance;
+    // track total tokens sold
+    uint256 private _totalTokensSold;
 
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
-        _mint(msg.sender, TOTAL_SUPPLY);
-    }
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
     /**
      * @dev Buy tokens using ETH
@@ -26,20 +25,20 @@ contract BondingCurveToken is ERC20, Ownable {
     function buy() external payable {
         require(msg.value > 0, "Must send ETH");
         
-        uint256 currentSupply = totalSupply();
-        require(currentSupply < PRE_LAUNCH_MAX_SUPPLY, "Max supply reached");
-        
+        require(_totalTokensSold < PRE_LAUNCH_MAX_SUPPLY, "Max supply reached");
         // Calculate tokens to mint based on the bonding curve
-        uint256 tokensToMint = calculatePurchaseAmount(msg.value, currentSupply);
+        uint256 tokensToMint = calculatePurchaseAmount(msg.value, _totalTokensSold);
         
+        console.log("tokensToMint", tokensToMint);
+
         uint256 ethNeeded = msg.value;
         
         // Ensure we don't exceed max supply
-        if (currentSupply + tokensToMint > PRE_LAUNCH_MAX_SUPPLY) {
-            tokensToMint = PRE_LAUNCH_MAX_SUPPLY - currentSupply;
+        if (_totalTokensSold + tokensToMint > PRE_LAUNCH_MAX_SUPPLY) {
+            tokensToMint = PRE_LAUNCH_MAX_SUPPLY - _totalTokensSold;
             
             // Calculate actual ETH needed and refund excess
-            ethNeeded = calculatePriceForTokens(tokensToMint, currentSupply);
+            ethNeeded = calculatePriceForTokens(tokensToMint, _totalTokensSold);
             if (msg.value > ethNeeded) {
                 payable(msg.sender).transfer(msg.value - ethNeeded);
             }
@@ -57,6 +56,9 @@ contract BondingCurveToken is ERC20, Ownable {
         
         // Mint tokens to the buyer
         _mint(msg.sender, tokensToMint);
+
+        // Update total tokens sold
+        _totalTokensSold += tokensToMint;
     }
 
     /**
@@ -88,6 +90,9 @@ contract BondingCurveToken is ERC20, Ownable {
         
         // Send ETH to seller (after fee)
         payable(msg.sender).transfer(ethAfterFee);
+
+        // Update total tokens sold
+        _totalTokensSold -= tokenAmount;
     }
     
     /**

@@ -7,9 +7,18 @@ import {BondingCurveToken} from "../src/BondingCurveToken.sol";
 
 contract BondingCurveTokenTest is BaseTest {
     BondingCurveToken public bondingCurveToken;
+    address public fastJpegOwner;
+    address public user1;
+
 
     function _setUp() public override {
-        bondingCurveToken = new BondingCurveToken("Bonding Curve Token", "BCT");
+        fastJpegOwner = address(this);
+        user1 = vm.addr(1);
+
+        vm.deal(fastJpegOwner, 0 ether);
+        vm.deal(user1, 100 ether);
+
+        bondingCurveToken = new BondingCurveToken("Fast JPEG Token", "FJPG");
     }
 
     function testCalculatePurchaseAmount() public {
@@ -39,4 +48,26 @@ contract BondingCurveTokenTest is BaseTest {
         uint256 priceFor300Tokens = bondingCurveToken.calculateSaleReturn(800_000_000 * 1e18, 800_000_000 * 1e18); 
         assertEq(priceFor300Tokens, 5 ether); 
     }        
-}
+
+    function testBuy() public {
+        vm.prank(user1);
+        bondingCurveToken.buy{value: 1 ether}();
+
+        assertEq(bondingCurveToken.balanceOf(user1), 357_770_876_399966351425467786, "User should have 357770876399966351425467786 FJPGtokens");
+        assertEq(bondingCurveToken.balanceOf(fastJpegOwner), 0, "Owner should have 0 FJPG tokens");
+        assertEq(address(bondingCurveToken).balance, 0.99 ether, "Owner should have 0.99 ether");
+        assertEq(fastJpegOwner.balance, 0.01 ether, "Owner should have 0.01 ether");
+    }
+
+    function testSell() public {
+        vm.prank(user1);
+        bondingCurveToken.buy{value: 1 ether}();
+        vm.prank(user1);
+        bondingCurveToken.sell(100_000_000 * 1e18);
+
+        assertEq(bondingCurveToken.balanceOf(user1), 257_770_876_399966351425467786, "User should have 257770876399966351425467786 FJPG tokens");
+        assertEq(bondingCurveToken.balanceOf(fastJpegOwner), 0, "Owner should have 0 FJPG tokens");
+        assertEq(address(bondingCurveToken).balance, 0.509108005625052576 ether, "Owner should have 0.509108005625052576 ether");
+        assertEq(fastJpegOwner.balance, 0.014808919943749474 ether, "Owner should have  0.014808919943749474 ether");
+    }
+}   
