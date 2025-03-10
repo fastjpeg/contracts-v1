@@ -16,7 +16,7 @@ contract FastJPEGToken is ERC20, Ownable {
     uint256 private _reserveBalance;
     // track total tokens sold
     uint256 private _totalTokensSold;
-    bool private _isLaunched = false;
+    bool private _isGraduated = false;
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
@@ -24,7 +24,7 @@ contract FastJPEGToken is ERC20, Ownable {
      * @dev Buy tokens using ETH
      */
     function buy() external payable {
-        require(!_isLaunched, "Token has been launched, buys disabled");
+        require(!_isGraduated, "Token been graduated, buys disabled");
         require(msg.value > 0, "Must send ETH");
         
         require(_totalTokensSold < PRE_LAUNCH_MAX_SUPPLY, "Max supply reached");
@@ -68,7 +68,7 @@ contract FastJPEGToken is ERC20, Ownable {
      * @param tokenAmount Amount of tokens to sell
      */
     function sell(uint256 tokenAmount) external {
-        require(!_isLaunched, "Token has been launched, sells disabled");
+        require(!_isGraduated, "Token graduated, sells disabled");
         require(tokenAmount > 0, "Amount must be positive");
         require(balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
         
@@ -178,18 +178,18 @@ contract FastJPEGToken is ERC20, Ownable {
     }
     
     /**
-     * @dev Launch the token, disabling buys and sells
+     * @dev Graduate the token, disabling buys and sells
      * Only owner can call this function
      */
-    function launchToken() external onlyOwner {
-        _isLaunched = true;
+    function graduateToken() external onlyOwner {
+        _isGraduated = true;
     }
     
     /**
-     * @dev Check if token has been launched
-     * @return True if token has been launched
+     * @dev Check if token has been graduated
+     * @return True if token has been graduated
      */
-    function isLaunched() external view returns (bool) {
-        return _isLaunched;
+    function isGraduated() external view returns (bool) {
+        return _isGraduated;
     }
 }

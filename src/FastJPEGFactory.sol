@@ -134,23 +134,23 @@ contract FastJPEGFactory is Ownable {
     }
 
     /**
-     * @dev Migrates a token to Aerodrome if requirements are met
-     * @param tokenAddress The address of the token to migrate
+     * @dev Graduates a token to Aerodrome if requirements are met
+     * @param tokenAddress The address of the token to graduate
      */
-    function migrateToken(address tokenAddress) external {
+    function graduateToken(address tokenAddress) external {
         TokenInfo storage tokenInfo = launchedTokens[tokenAddress];
         require(tokenInfo.tokenAddress != address(0), "Token not found");
         require(!tokenInfo.isPromoted, "Token already promoted");
         require(tokenInfo.ethCollected >= FINAL_PRICE, "Insufficient ETH collected");
 
-        _migrateToken(tokenAddress);
+        _graduateToken(tokenAddress);
     }
     
     /**
-     * @dev Internal function to migrate a token to Aerodrome
-     * @param tokenAddress The address of the token to migrate
+     * @dev Internal function to graduate a token to Aerodrome
+     * @param tokenAddress The address of the token to graduate
      */
-    function _migrateToken(address tokenAddress) internal {
+    function _graduateToken(address tokenAddress) internal {
         TokenInfo storage tokenInfo = launchedTokens[tokenAddress];
         tokenInfo.isPromoted = true;
 
