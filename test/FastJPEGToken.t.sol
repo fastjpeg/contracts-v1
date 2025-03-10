@@ -9,7 +9,6 @@ contract FastJPEGTokenTest is Test {
     address public fastJpegOwner;
     address public user1;
 
-
     function setUp() public {
         fastJpegOwner = address(this);
         user1 = vm.addr(1);
