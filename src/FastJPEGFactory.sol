@@ -11,7 +11,6 @@ import "../lib/contracts/contracts/interfaces/IPool.sol";
 
 
 contract FastJPEGFactory is Ownable {
-
     uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 10**18; // 800M tokens with 18 decimals
     uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 10**18; // 200M tokens with 18 decimals
     uint256 public constant AIRDROP_SUPPLY = 160_000_000 * 10**18; // 160 million tokens
@@ -26,23 +25,6 @@ contract FastJPEGFactory is Ownable {
 
     uint256 public constant AIRDROP_ETH = 1 ether; // 1 ETH to airdrop
     
-
-    // Constants
-    // uint256 public constant TOTAL_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
-    // uint256 public constant PRE_LAUNCH_SUPPLY = 800_000_000 * 10**18; // 800 million tokens
-    // 
-
-    // uint256 public constant INITIAL_PRICE = 0.0001 ether;
-    // uint256 public constant FINAL_PRICE = 5 ether;
-
-    // uint256 public constant MAX_AIRDROP_ETH = 1 ether;
-    // uint256 public constant LAUNCH_FEE = 0.5 ether;
-    // uint256 public constant LIQUIDITY_LOCK = 0.8 ether;
-
-    // uint256 public constant TRADE_FEE_BPS = 100; // 1% = 100 BPS
-    // uint256 public constant AIRDROP_FEE_BPS = 100; // 1% = 100 BPS
-    // uint256 public constant BPS_DENOMINATOR = 10000; // 100% = 10000 BPS
-
     // Aerodrome contracts
     IPoolFactory public immutable poolFactory;
     IRouter public immutable router;
@@ -56,7 +38,7 @@ contract FastJPEGFactory is Ownable {
         bool isGraduated;
     }
 
-    mapping(address => TokenInfo) public undergraduateTokens;
+    mapping(address => TokenInfo) public tokens;
     
     // Events
     event TokenLaunched(address indexed token, address indexed creator);
@@ -71,7 +53,6 @@ contract FastJPEGFactory is Ownable {
         router = IRouter(_router);
         _transferOwnership(msg.sender);
     }
-
     /**
      * @dev Launches a new token with the specified name and symbol without airdrop recipients
      * @param name The name of the token
@@ -93,7 +74,7 @@ contract FastJPEGFactory is Ownable {
         FastJPEGToken newToken = new FastJPEGToken(name, symbol);
         
         // Initialize token info
-        TokenInfo storage tokenInfo = undergraduateTokens[address(newToken)];
+        TokenInfo storage tokenInfo = tokens[address(newToken)];
         tokenInfo.tokenAddress = address(newToken);
         tokenInfo.reserveBalance = 0;
         tokenInfo.tokensSold = 0;
@@ -127,8 +108,7 @@ contract FastJPEGFactory is Ownable {
         return address(newToken);
     }
 
-
-  /**
+    /**
      * @dev Buy tokens using ETH
      */
     function buy(address tokenAddress) external payable {
@@ -137,33 +117,32 @@ contract FastJPEGFactory is Ownable {
         require(msg.value > 0, "Must send ETH");
         
         require(tokenInfo.tokensSold < UNDERGRADUATE_SUPPLY, "Max supply reached");
-        // Calculate tokens to mint based on the bonding curve
-        uint256 tokensToMint = calculatePurchaseAmount(msg.value, tokenInfo.tokensSold);
-        
-        console.log("tokensToMint", tokensToMint);
 
-        uint256 ethNeeded = msg.value;
+        uint256 purchaseEthBeforeFee = msg.value;
+
+        // Calculate 1% fee
+        uint256 fee = (purchaseEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 purchaseEth = purchaseEthBeforeFee - fee;
+
+        // Calculate tokens to mint based on the bonding curve
+        uint256 tokensToMint = calculatePurchaseAmount(purchaseEth, tokenInfo.tokensSold);
         
         // Ensure we don't exceed max supply
         if (tokenInfo.tokensSold + tokensToMint > UNDERGRADUATE_SUPPLY) {
             tokensToMint = UNDERGRADUATE_SUPPLY - tokenInfo.tokensSold;
             
             // Calculate actual ETH needed and refund excess
-            ethNeeded = calculatePriceForTokens(tokensToMint, tokenInfo.tokensSold);
-            if (msg.value > ethNeeded) {
-                payable(msg.sender).transfer(msg.value - ethNeeded);
+            purchaseEthBeforeFee = calculatePriceForTokens(tokensToMint, tokenInfo.tokensSold);
+            if (msg.value > purchaseEthBeforeFee) {
+                payable(msg.sender).transfer(msg.value - purchaseEthBeforeFee);
             }
         }
-        
-        // Calculate 1% fee
-        uint256 fee = (ethNeeded * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
-        uint256 ethAfterFee = ethNeeded - fee;
         
         // Send fee to owner
         payable(owner()).transfer(fee);
         
         // Update reserve balance with the ETH used (after fee)
-        tokenInfo.reserveBalance += ethAfterFee;
+        tokenInfo.reserveBalance += purchaseEth;
         
         // Mint tokens to the buyer
         FastJPEGToken(tokenAddress).mint(msg.sender, tokensToMint);
@@ -171,7 +150,6 @@ contract FastJPEGFactory is Ownable {
         // Update total tokens sold
         tokenInfo.tokensSold += tokensToMint;
     }
-
 
     /**
      * @dev Sell tokens to get ETH back
@@ -186,24 +164,25 @@ contract FastJPEGFactory is Ownable {
         uint256 currentSupply = FastJPEGToken(tokenAddress).totalSupply();
         
         // Calculate ETH to return based on the bonding curve
-        uint256 ethToReturn = calculateSaleReturn(tokenAmount, currentSupply);
-        require(ethToReturn <= tokenInfo.reserveBalance, "Insufficient reserve");
-        
+        uint256 returnEthBeforeFee = calculateSaleReturn(tokenAmount, currentSupply);
+
         // Calculate 1% fee
-        uint256 fee = (ethToReturn * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
-        uint256 ethAfterFee = ethToReturn - fee;
-        
+        uint256 fee = (returnEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 returnEth = returnEthBeforeFee - fee;
+
+        require(returnEth <= tokenInfo.reserveBalance, "Insufficient reserve");
+
         // Burn tokens
         FastJPEGToken(tokenAddress).burn(msg.sender, tokenAmount);
         
         // Update reserve balance
-        tokenInfo.reserveBalance -= ethToReturn;
+        tokenInfo.reserveBalance -= returnEth;
         
         // Send fee to owner
         payable(owner()).transfer(fee);
         
         // Send ETH to seller (after fee)
-        payable(msg.sender).transfer(ethAfterFee);
+        payable(msg.sender).transfer(returnEth);
 
         // Update total tokens sold
         tokenInfo.tokensSold -= tokenAmount;
@@ -218,7 +197,6 @@ contract FastJPEGFactory is Ownable {
     function calculatePurchaseAmount(uint256 ethAmount, uint256 currentSupply) public pure returns (uint256) {
         // For a quadratic curve: T = sqrt((E * UNDERGRADUATE_SUPPLY²) / GRADUATE_ETH + currentSupply²) - currentSupply
 
-        
         // Calculate: (E * UNDERGRADUATE_SUPPLY²) / GRADUATE_ETH
         uint256 numerator = ethAmount * (UNDERGRADUATE_SUPPLY ** 2);
         uint256 term1 = numerator / GRADUATE_ETH;
@@ -266,25 +244,14 @@ contract FastJPEGFactory is Ownable {
         // Uses the same formula as calculatePriceForTokens but in reverse
         return calculatePriceForTokens(tokenAmount, currentSupply - tokenAmount);
     }
-    /**
-     * @dev Graduates a token to Aerodrome if requirements are met
-     * @param tokenAddress The address of the token to graduate
-     */
-    function graduateToken(address tokenAddress) external {
-        // TokenInfo storage tokenInfo = undergraduateTokens[tokenAddress];
-        // require(tokenInfo.tokenAddress != address(0), "Token not found");
-        // require(!tokenInfo.isGraudated, "Token already promoted");
-        // require(tokenInfo.ethCollected >= FINAL_PRICE, "Insufficient ETH collected");
-
-        _graduateToken(tokenAddress);
-    }
     
     /**
      * @dev Internal function to graduate a token to Aerodrome
      * @param tokenAddress The address of the token to graduate
      */
     function _graduateToken(address tokenAddress) internal {
-        // TokenInfo storage tokenInfo = undergraduateTokens[tokenAddress];
+        TokenInfo storage tokenInfo = tokens[tokenAddress];
+        // require(!tokenInfo.isGraudated, "Token already graduated");
         // tokenInfo.isGraudated = true;
 
         // // Transfer launch fee to contract owner
@@ -317,7 +284,7 @@ contract FastJPEGFactory is Ownable {
     }
 
     function _tokenInfo(address tokenAddress) internal view returns (TokenInfo storage) {
-        TokenInfo storage tokenInfo = undergraduateTokens[tokenAddress];
+        TokenInfo storage tokenInfo = tokens[tokenAddress];
         require(tokenInfo.tokenAddress != address(0), "Token not found");
         return tokenInfo;
     }

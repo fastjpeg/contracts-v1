@@ -21,7 +21,11 @@ contract FastJPEGTokenTest is BaseTest {
         fastJpegToken = new FastJPEGToken("Fast JPEG Token", "FJPG");
     }
 
-    function testSupplyCap() public {
+    function testDecimals() public view {
+        assertEq(fastJpegToken.decimals(), 18);
+    }
+
+    function testSupplyCap() public view {
         assertEq(fastJpegToken.cap(), 1_000_000_000 * 10**18);
     }
 
