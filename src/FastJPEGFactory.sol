@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../lib/contracts/contracts/interfaces/factories/IPoolFactory.sol";
 import "../lib/contracts/contracts/interfaces/IRouter.sol";
+import "../lib/contracts/contracts/interfaces/IPool.sol";
 
 contract FastJPEGFactory is Ownable {
     uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 10**18; // 800M tokens with 18 decimals
@@ -30,6 +31,7 @@ contract FastJPEGFactory is Ownable {
     // State variables
     struct TokenInfo {
         address tokenAddress;
+        address creator;
         address poolAddress;
         uint256 reserveBalance;
         uint256 tokensSold;
@@ -46,7 +48,7 @@ contract FastJPEGFactory is Ownable {
     event TokensSold(address indexed token, address indexed seller, uint256 amount, uint256 ethReceived);
     event TokenPromoted(address indexed token, address indexed pool);
     event AirdropIssued(address indexed token, address indexed recipient, uint256 amount);
-    event LiquidityLocked(address indexed token, address indexed pool, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity);
+    event TokenGraduated(address indexed token, address indexed pool);
 
     constructor(address _poolFactory, address _router) Ownable() {
         poolFactory = IPoolFactory(_poolFactory);
@@ -76,6 +78,7 @@ contract FastJPEGFactory is Ownable {
         // Initialize token info
         TokenInfo storage tokenInfo = tokens[address(newToken)];
         tokenInfo.tokenAddress = address(newToken);
+        tokenInfo.creator = msg.sender;
         tokenInfo.reserveBalance = 0;
         tokenInfo.tokensSold = 0;
         tokenInfo.isGraduated = false;
@@ -251,36 +254,46 @@ contract FastJPEGFactory is Ownable {
      */
     function _graduateToken(address tokenAddress) internal {
         TokenInfo storage tokenInfo = tokens[tokenAddress];
-        // require(!tokenInfo.isGraudated, "Token already graduated");
-        // tokenInfo.isGraudated = true;
+        require(!tokenInfo.isGraduated, "Token already graduated");
+        tokenInfo.isGraduated = true;
 
-        // // Transfer launch fee to contract owner
-        // payable(owner()).transfer(LAUNCH_FEE);
+        // Create Pool
+        address poolAddress = poolFactory.createPool(tokenAddress, address(0), false); // false for volatile pool
+        tokenInfo.poolAddress = poolAddress;
 
-        // // Create pool on Aerodrome
-        // address poolAddress = poolFactory.createPool(tokenAddress, address(0), false); // false for volatile pool
-        // tokenInfo.poolAddress = poolAddress;
+        // mint graduation supply factory
+        FastJPEGToken(tokenAddress).mint(address(this), GRADUATE_SUPPLY);
+        
+        // Approve router to spend tokens
+        ERC20(tokenAddress).approve(address(router), GRADUATE_SUPPLY);
 
-        // // Calculate liquidity amounts
-        // uint256 tokenAmount = TOTAL_SUPPLY / 100; // 1% of total supply for initial liquidity
-        // uint256 ethAmount = LIQUIDITY_LOCK;
+        
+        // mint GRADUATION_FEE
+        FastJPEGToken(tokenAddress).mint(owner(), GRADUATION_FEE);    
+        // mint CREATOR_REWARD_FEE
+        FastJPEGToken(tokenAddress).mint(tokenInfo.creator, CREATOR_REWARD_FEE);
+        // remaining ETH used for liquidity
+        uint256 liquidityEthAfterFee = tokenInfo.reserveBalance - GRADUATION_FEE - CREATOR_REWARD_FEE;
 
-        // // Approve router to spend tokens
-        // ERC20(tokenAddress).approve(address(router), tokenAmount);
 
-        // // Add liquidity to Aerodrome
-        // (uint256 amountToken, uint256 amountETH, uint256 liquidity) = router.addLiquidityETH{value: ethAmount}(
-        //     tokenAddress,
-        //     false, // volatile pool
-        //     tokenAmount,
-        //     tokenAmount, // min token amount
-        //     ethAmount, // min ETH amount
-        //     address(this), // liquidity tokens are locked in the contract
-        //     block.timestamp + 1800 // 30 minutes deadline
-        // );
+        // Add liquidity to Aerodrome
+        (uint256 amountToken, uint256 amountETH, uint256 liquidity) = router.addLiquidityETH{value: liquidityEthAfterFee}(
+            tokenAddress,
+            false, // volatile pool
+            GRADUATE_SUPPLY,
+            GRADUATE_SUPPLY, // min token amount
+            tokenInfo.reserveBalance, // min ETH amount
+            address(this), // liquidity tokens are locked in the contract
+            block.timestamp + 1800 // 30 minutes deadline
+        );
 
-        // emit TokenPromoted(tokenAddress, poolAddress);
-        // emit LiquidityLocked(tokenAddress, poolAddress, amountToken, amountETH, liquidity);
+        // Burn the liquidity provider tokens that are returned
+        address lpTokenAddress = poolFactory.getPool(tokenAddress, address(0), false);
+        IERC20(lpTokenAddress).transfer(address(0), liquidity);
+
+        // Tranfer ownership to null address
+        FastJPEGToken(tokenAddress).transferOwnership(address(0));
+        emit TokenGraduated(tokenAddress, poolAddress);
     }
 
     function _tokenInfo(address tokenAddress) internal view returns (TokenInfo storage) {

@@ -129,7 +129,7 @@ contract FastJPEGFactoryTest is BaseTest {
         assertEq(token.totalSupply(), 0, "Token total supply should be 1b");
 
         // Get the token info from the factory
-        (address storedTokenAddress, address poolAddress, uint256 reserveBalance, uint256 tokensSold, bool isGraduated) = 
+        (address storedTokenAddress, address creator, address poolAddress, uint256 reserveBalance, uint256 tokensSold, bool isGraduated) = 
             fastJpegFactory.tokens(tokenAddress);
             
         // Verify token info in the factory
