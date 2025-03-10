@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-contract BondingCurveToken is ERC20, Ownable {
+contract FastJPEGToken is ERC20, Ownable {
     using Math for uint256;
 
     uint256 public constant PRE_LAUNCH_MAX_SUPPLY = 800_000_000 * 10**18; // 800M tokens with 18 decimals
@@ -16,6 +16,7 @@ contract BondingCurveToken is ERC20, Ownable {
     uint256 private _reserveBalance;
     // track total tokens sold
     uint256 private _totalTokensSold;
+    bool private _isLaunched = false;
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
@@ -23,6 +24,7 @@ contract BondingCurveToken is ERC20, Ownable {
      * @dev Buy tokens using ETH
      */
     function buy() external payable {
+        require(!_isLaunched, "Token has been launched, buys disabled");
         require(msg.value > 0, "Must send ETH");
         
         require(_totalTokensSold < PRE_LAUNCH_MAX_SUPPLY, "Max supply reached");
@@ -66,6 +68,7 @@ contract BondingCurveToken is ERC20, Ownable {
      * @param tokenAmount Amount of tokens to sell
      */
     function sell(uint256 tokenAmount) external {
+        require(!_isLaunched, "Token has been launched, sells disabled");
         require(tokenAmount > 0, "Amount must be positive");
         require(balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
         
@@ -172,5 +175,21 @@ contract BondingCurveToken is ERC20, Ownable {
      */
     function getReserveBalance() external view returns (uint256) {
         return _reserveBalance;
+    }
+    
+    /**
+     * @dev Launch the token, disabling buys and sells
+     * Only owner can call this function
+     */
+    function launchToken() external onlyOwner {
+        _isLaunched = true;
+    }
+    
+    /**
+     * @dev Check if token has been launched
+     * @return True if token has been launched
+     */
+    function isLaunched() external view returns (bool) {
+        return _isLaunched;
     }
 }
