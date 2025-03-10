@@ -12,19 +12,25 @@ import "../lib/contracts/contracts/interfaces/IPool.sol";
 
 contract FastJPEGFactory is Ownable {
 
-    uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 10**18; // 200M tokens with 18 decimals
     uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 10**18; // 800M tokens with 18 decimals
+    uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 10**18; // 200M tokens with 18 decimals
+    uint256 public constant AIRDROP_SUPPLY = 160_000_000 * 10**18; // 160 million tokens
+
     uint256 public constant GRADUATE_ETH = 5 ether; // 5 ETH to graduate token
+
     uint256 public constant UNDERGRADUATE_FEE_BPS = 100; // 1% fee
     uint256 public constant BPS_DENOMINATOR = 10000; // 100% = 10000 BPS
 
     uint256 public constant GRADUATION_FEE = 0.1 ether; // 0.1 ETH to graduate token
     uint256 public constant CREATOR_REWARD_FEE = 0.05 ether; // 0.05 ETH to creator
 
+    uint256 public constant AIRDROP_ETH = 1 ether; // 1 ETH to airdrop
+    
+
     // Constants
     // uint256 public constant TOTAL_SUPPLY = 1_000_000_000 * 10**18; // 1 billion tokens
     // uint256 public constant PRE_LAUNCH_SUPPLY = 800_000_000 * 10**18; // 800 million tokens
-    // uint256 public constant AIRDROP_SUPPLY = 160_000_000 * 10**18; // 160 million tokens
+    // 
 
     // uint256 public constant INITIAL_PRICE = 0.0001 ether;
     // uint256 public constant FINAL_PRICE = 5 ether;
@@ -93,39 +99,29 @@ contract FastJPEGFactory is Ownable {
         tokenInfo.tokensSold = 0;
         tokenInfo.isGraduated = false;
 
-        // // If user sent 1 ETH and provided recipients, perform airdrop
-        // if (msg.value >= 1 ether && airdropRecipients.length > 0) {
-        //     uint256 airdropAmount = 1 ether;
+        // If user sent 1 ETH and provided recipients, perform airdrop
+        if (msg.value >= AIRDROP_ETH && airdropRecipients.length > 0) {
+            uint256 fee = (AIRDROP_ETH * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
             
-        //     // Calculate fee for airdrop (using TRADE_FEE_BPS)
-        //     uint256 airdropFee = (airdropAmount * TRADE_FEE_BPS) / BPS_DENOMINATOR;
-        //     uint256 netAirdropAmount = airdropAmount - airdropFee;
+            // Send fee to contract owner
+            payable(owner()).transfer(fee);
             
-        //     // Send fee to contract owner
-        //     payable(owner()).transfer(airdropFee);
+            // Distribute tokens evenly among recipients by minting directly to them
+            uint256 tokensPerRecipient = AIRDROP_SUPPLY / airdropRecipients.length;
+            for (uint256 i = 0; i < airdropRecipients.length; i++) {
+                require(airdropRecipients[i] != address(0), "Invalid recipient address");
+                newToken.mint(airdropRecipients[i], tokensPerRecipient);
+                emit AirdropIssued(address(newToken), airdropRecipients[i], tokensPerRecipient);
+            }
             
-        //     // Record the net amount used for airdrop
-        //     tokenInfo.airdropEthUsed = netAirdropAmount;
-            
-        //     // Calculate tokens to distribute from the airdrop supply (AIRDROP_SUPPLY)
-        //     uint256 tokensToDistribute = AIRDROP_SUPPLY;
-            
-        //     // Distribute tokens evenly among recipients by minting directly to them
-        //     uint256 tokensPerRecipient = tokensToDistribute / airdropRecipients.length;
-        //     for (uint256 i = 0; i < airdropRecipients.length; i++) {
-        //         require(airdropRecipients[i] != address(0), "Invalid recipient address");
-        //         newToken.mint(airdropRecipients[i], tokensPerRecipient);
-        //         emit AirdropIssued(address(newToken), airdropRecipients[i], tokensPerRecipient);
-        //     }
-            
-        //     // Refund excess ETH if any
-        //     if (msg.value > 1 ether) {
-        //         payable(msg.sender).transfer(msg.value - 1 ether);
-        //     }
-        // } else if (msg.value > 0) {
-        //     // Refund any ETH if no airdrop performed
-        //     payable(msg.sender).transfer(msg.value);
-        // }
+            // Refund excess ETH if any
+            if (msg.value > 1 ether) {
+                payable(msg.sender).transfer(msg.value - 1 ether);
+            }
+        } else if (msg.value > 0) {
+            // Refund any ETH if no airdrop performed
+            payable(msg.sender).transfer(msg.value);
+        }
 
         emit TokenLaunched(address(newToken), msg.sender);
         return address(newToken);

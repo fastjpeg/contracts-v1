@@ -43,7 +43,7 @@ contract FastJPEGFactoryTest is BaseTest {
         assertEq(fastJpegFactory.owner(), fastJpegOwner);
     }
 
-      function testCalculatePurchaseAmount() public {
+    function testCalculatePurchaseAmount() public view {
         uint256 tokensToMint1Ether = fastJpegFactory.calculatePurchaseAmount(1 ether, 0);
         assertEq(tokensToMint1Ether, 357770876399966351425467786);
 
@@ -60,7 +60,7 @@ contract FastJPEGFactoryTest is BaseTest {
         assertEq(tokensToMint5Ether, 800000000000000000000000000);        
     }
 
-    function testCalculateSaleReturn() public {
+    function testCalculateSaleReturn() public view {
         uint256 priceFor100Tokens = fastJpegFactory.calculateSaleReturn(100_000_000 * 1e18, 400_000_000 * 1e18);  
         assertEq(priceFor100Tokens, 546875000000000000);
 
@@ -129,96 +129,47 @@ contract FastJPEGFactoryTest is BaseTest {
         assertEq(token.balanceOf(user1), 0, "User1 should receive 0 tokens");
     }
 
+    function testCreateTokenAirdrop() public {
+        address[] memory airdropRecipients = new address[](4);
+        airdropRecipients[0] = user1;
+        airdropRecipients[1] = user2;
+        airdropRecipients[2] = user3;
+        airdropRecipients[3] = user4;
 
-    // function testBuyTokens() public {
-    //     address tokenAddress = jpegFactory.createToken("Fast JPEG Test Token", "FJTT");
+        vm.startPrank(user1);
+        address tokenAddress = fastJpegFactory.createTokenAirdrop{value: 1 ether}(tokenName, tokenSymbol, airdropRecipients);
+        vm.stopPrank();
 
-    //     // Get initial tokensRemaining
-    //     (, , uint256 initialTokensRemaining, , ,) = jpegFactory.launchedTokens(tokenAddress);
-        
-    //     // Calculate the price for buying 100 tokens
-    //     uint256 price = jpegFactory.calculateBuyPrice(tokenAddress, 100);
-        
-    //     // Impersonate user1 and send ETH with the transaction
-    //     vm.prank(user1);
-    //     jpegFactory.buyTokens{value: price}(tokenAddress, 100);
+        // Check token balance
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 40_000_000 * 10**18, "User1 should receive 40m tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user2), 40_000_000 * 10**18, "User2 should receive 40m tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user3), 40_000_000 * 10**18, "User3 should receive 40m tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user4), 40_000_000 * 10**18, "User4 should receive 40m tokens");
+    }
 
-    //     // Check token balance
-    //     assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 100, "User1 should receive 100 tokens");
+    function testCreateTokenAirdropOverPayEth() public {
+        address[] memory airdropRecipients = new address[](4);
+        airdropRecipients[0] = user1;
+        airdropRecipients[1] = user2;
+        airdropRecipients[2] = user3;
+        airdropRecipients[3] = user4;
 
-    //     // Calculate expected fee
-    //     uint256 expectedFee = (price * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
-    //     assertEq(fastJpegOwner.balance, expectedFee, "Owner should have received the correct fee");
-        
-    //     // Check that tokensRemaining was updated correctly
-    //     (, , uint256 updatedTokensRemaining, , ,) = jpegFactory.launchedTokens(tokenAddress);
-    //     assertEq(updatedTokensRemaining, initialTokensRemaining - 100, "Tokens remaining should be reduced by 100");
-    // }
+        vm.startPrank(user1);
+        address tokenAddress = fastJpegFactory.createTokenAirdrop{value: 2 ether}(tokenName, tokenSymbol, airdropRecipients);
+        vm.stopPrank();
 
-    // function testSellTokens() public {
-    //     address tokenAddress = jpegFactory.createToken("Fast JPEG Test Token", "FJTT");
+        assertEq(address(fastJpegFactory).balance, 0.99 ether, "Factory should have 1 ether");
+        assertEq(fastJpegOwner.balance, 0.01 ether, "Owner should have 0.01 ether");
+        assertEq(user1.balance, 99 ether, "User1 should have 99 ether");
+    }
 
-    //     // Calculate the price for buying 100 tokens
-    //     uint256 price = jpegFactory.calculateBuyPrice(tokenAddress, 100);  
-        
-    //     // Impersonate user1 and send ETH with the transaction
-    //     vm.prank(user1);
-    //     jpegFactory.buyTokens{value: price}(tokenAddress, 100);
+    function testCreateTokenAirdropNoRecipients() public {
+        vm.startPrank(user1);
+        address tokenAddress = fastJpegFactory.createTokenAirdrop(tokenName, tokenSymbol, new address[](0));
+        vm.stopPrank();
 
-    //     // Check token balance
-    //     assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 100, "User1 should receive 100 tokens");
-        
-    //     // Get tokensRemaining after buying
-    //     (, , uint256 tokensRemainingAfterBuy, , ,) = jpegFactory.launchedTokens(tokenAddress);
-        
-    //     // Calculate expected buy fee
-    //     uint256 expectedBuyFee = (price * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
-    //     assertEq(fastJpegOwner.balance, expectedBuyFee, "Owner should have received the correct buy fee");
-
-    //     // Approve tokens for selling
-    //     vm.startPrank(user1);
-    //     FastJPEGToken(tokenAddress).approve(address(jpegFactory), 50);
-        
-    //     // Sell 50 tokens
-    //     jpegFactory.sellTokens(tokenAddress, 50);
-    //     vm.stopPrank();
-
-    //     // Check token balance
-    //     assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 50, "User1 should have 50 tokens remaining");
-
-    //     // Calculate sell price and expected sell fee
-    //     uint256 sellPrice = jpegFactory.calculateSellPrice(tokenAddress, 50);
-    //     uint256 expectedSellFee = (sellPrice * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
-        
-    //     // Check that owner has received both buy and sell fees
-    //     assertEq(fastJpegOwner.balance, expectedBuyFee + expectedSellFee, "Owner should have received both buy and sell fees");
-        
-    //     // Check that tokensRemaining was updated correctly after selling
-    //     (, , uint256 tokensRemainingAfterSell, , ,) = jpegFactory.launchedTokens(tokenAddress);
-    //     assertEq(tokensRemainingAfterSell, tokensRemainingAfterBuy + 50, "Tokens remaining should be increased by 50 after selling");
-    // }
-
-    // function testLuanchTokenWithAirdrop() public {
-    //     address[] memory airdropRecipients = new address[](4);
-    //     airdropRecipients[0] = user1;
-    //     airdropRecipients[1] = user2;
-    //     airdropRecipients[2] = user3;
-    //     airdropRecipients[3] = user4;
-
-    //     vm.prank(user1);
-    //     address tokenAddress = jpegFactory.createTokenAirdrop{ value: 1 ether }("Fast JPEG Test Token", "FJTT", airdropRecipients);
-
-    //     // Check token balance
-    //     assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 40_000_000 * 10**18, "User1 should receive 40m tokens");
-    //     assertEq(FastJPEGToken(tokenAddress).balanceOf(user2), 40_000_000 * 10**18, "User2 should receive 40m tokens");
-    //     assertEq(FastJPEGToken(tokenAddress).balanceOf(user3), 40_000_000 * 10**18, "User3 should receive 40m tokens");
-    //     assertEq(FastJPEGToken(tokenAddress).balanceOf(user4), 40_000_000 * 10**18, "User4 should receive 40m tokens");
-
-    //     // Check that onwer has recieved trade fee
-    //     uint256 tradeFee = (1 ether * jpegFactory.TRADE_FEE_BPS()) / jpegFactory.BPS_DENOMINATOR();
-    //     assertEq(fastJpegOwner.balance, tradeFee, "Owner should have received the correct trade fee");
-    //     // check tokens remaining
-    //     (, , uint256 tokensRemaining, , ,) = jpegFactory.launchedTokens(tokenAddress);
-    //     assertEq(tokensRemaining, 800_000_000 * 10**18, "Tokens remaining should be 800m");
-    // }
+        assertEq(address(fastJpegFactory).balance, 0 ether, "Factory should have 0 ether");
+        assertEq(fastJpegOwner.balance, 0 ether, "Owner should have 0 ether");
+        assertEq(user1.balance, 100 ether, "User1 should have 100 ether");
+    }
 }
