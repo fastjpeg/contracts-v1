@@ -2,12 +2,10 @@
 pragma solidity ^0.8.19;
 import {Test, console} from "forge-std/Test.sol";
 import {FastJPEGFactory, FastJPEGToken} from "../src/FastJPEGFactory.sol";
-import {UniswapV2Factory} from "../lib/v2-core/contracts/UniswapV2Factory.sol";
-import {UniswapV2Router02} from "../lib/v2-periphery/contracts/UniswapV2Router02.sol";
+import {BaseTest} from "../lib/contracts/test/BaseTest.sol";
 
-contract FastJPEGFactoryTest is Test {
-    IUniswapV2Factory public factory;
-    IUniswapV2Router02 public router;
+
+contract FastJPEGFactoryTest is BaseTest {
     FastJPEGFactory public fastJpegFactory;
     string public tokenName = "Fast JPEG Token";
     string public tokenSymbol = "FJPG";
@@ -18,10 +16,7 @@ contract FastJPEGFactoryTest is Test {
     address public user3;
     address public user4;
 
-    function setUp() public {
-        factory = new UniswapV2Factory(0x0);
-        router = new UniswapV2Router02(address(factory), 0x0);
-
+    function _setUp() public override{
         fastJpegFactory = new FastJPEGFactory(address(factory), address(router));
         
         // Initialize test users with different addresses
