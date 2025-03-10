@@ -10,7 +10,7 @@ contract FastJPEGTokenTest is Test {
     address public user1;
 
 
-    function _setUp() public {
+    function setUp() public {
         fastJpegOwner = address(this);
         user1 = vm.addr(1);
 
@@ -20,11 +20,11 @@ contract FastJPEGTokenTest is Test {
         fastJpegToken = new FastJPEGToken("Fast JPEG Token", "FJPG");
     }
 
-    function testDecimals() public view {
+    function testDecimals() public {
         assertEq(fastJpegToken.decimals(), 18);
     }
 
-    function testSupplyCap() public view {
+    function testSupplyCap() public {
         assertEq(fastJpegToken.cap(), 1_000_000_000 * 10**18);
     }
 

@@ -2,11 +2,10 @@
 pragma solidity ^0.8.19;
 import {console} from "forge-std/console.sol";
 import { FastJPEGToken } from "./FastJPEGToken.sol";
-import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import {IUniswapV2Factory} from "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
-import {IUniswapV2Router02} from "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 
 
 contract FastJPEGFactory is Ownable {
@@ -24,10 +23,6 @@ contract FastJPEGFactory is Ownable {
 
     uint256 public constant AIRDROP_ETH = 1 ether; // 1 ETH to airdrop
     
-    // Aerodrome contracts
-    IUniswapV2Factory public immutable factory;
-    IUniswapV2Router02 public immutable router;
-
     // State variables
     struct TokenInfo {
         address tokenAddress;
@@ -47,9 +42,7 @@ contract FastJPEGFactory is Ownable {
     event AirdropIssued(address indexed token, address indexed recipient, uint256 amount);
     event LiquidityLocked(address indexed token, address indexed pool, uint256 tokenAmount, uint256 ethAmount, uint256 liquidity);
 
-    constructor(address _factory, address _router) Ownable() {
-        factory = IUniswapV2Factory(_factory);
-        router = IUniswapV2Router02(_router);
+    constructor() Ownable() {
         _transferOwnership(msg.sender);
     }
     /**
