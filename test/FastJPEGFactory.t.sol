@@ -8,8 +8,10 @@ import {BaseTest} from "../lib/contracts/test/BaseTest.sol";
 import {FastJPEGFactory, FastJPEGToken} from "../src/FastJPEGFactory.sol";
 
 contract FastJPEGFactoryTest is BaseTest {
-    FastJPEGFactory public jpegFactory;
-    
+    FastJPEGToken public fastJpegToken;
+    FastJPEGFactory public fastJpegFactory;
+    string public tokenName = "Fast JPEG Token";
+    string public tokenSymbol = "FJPG";
     // Test users
     address public fastJpegOwner;
     address public user1;
@@ -18,7 +20,8 @@ contract FastJPEGFactoryTest is BaseTest {
     address public user4;
 
     function _setUp() public override {
-        jpegFactory = new FastJPEGFactory(address(factory), address(router));
+        fastJpegToken = new FastJPEGToken(tokenName, tokenSymbol);
+        fastJpegFactory = new FastJPEGFactory(address(factory), address(router));
         
         // Initialize test users with different addresses
         fastJpegOwner = address(this);
@@ -37,23 +40,70 @@ contract FastJPEGFactoryTest is BaseTest {
     }
 
     function testFactoryOwner() public view {
-        assertEq(jpegFactory.owner(), fastJpegOwner);
+        assertEq(fastJpegFactory.owner(), fastJpegOwner);
     }
 
-    function testLaunchToken() public {
-        // Setup test parameters
-        string memory tokenName = "Fast JPEG Test Token";
-        string memory tokenSymbol = "FJTT";
-        
-        // Set up event expectations before the action
-        // vm.expectEmit(true, true, false, true);
-        // // emit TokenLaunched(address(0), user1); // We can't know the token address beforehand, so we use address(0) here
-        
+      function testCalculatePurchaseAmount() public {
+        uint256 tokensToMint1Ether = fastJpegFactory.calculatePurchaseAmount(1 ether, 0);
+        assertEq(tokensToMint1Ether, 357770876399966351425467786);
+
+        uint256 tokensToMint2Ether = fastJpegFactory.calculatePurchaseAmount(2 ether, 0);
+        assertEq(tokensToMint2Ether, 505964425626940693119822967);    
+
+        uint256 tokensToMint3Ether = fastJpegFactory.calculatePurchaseAmount(3 ether, 0); 
+        assertEq(tokensToMint3Ether, 619677335393186701628682463);
+
+        uint256 tokensToMint4Ether = fastJpegFactory.calculatePurchaseAmount(4 ether, 0);
+        assertEq(tokensToMint4Ether, 715541752799932702850935573);
+
+        uint256 tokensToMint5Ether = fastJpegFactory.calculatePurchaseAmount(5 ether, 0);
+        assertEq(tokensToMint5Ether, 800000000000000000000000000);        
+    }
+
+    function testCalculateSaleReturn() public {
+        uint256 priceFor100Tokens = fastJpegFactory.calculateSaleReturn(100_000_000 * 1e18, 400_000_000 * 1e18);  
+        assertEq(priceFor100Tokens, 546875000000000000);
+
+        uint256 priceFor200Tokens = fastJpegFactory.calculateSaleReturn(200_000_000 * 1e18, 400_000_000 * 1e18);  
+        assertEq(priceFor200Tokens, 937500000000000000);
+
+        uint256 priceFor300Tokens = fastJpegFactory.calculateSaleReturn(800_000_000 * 1e18, 800_000_000 * 1e18); 
+        assertEq(priceFor300Tokens, 5 ether); 
+    }        
+
+    function testBuy() public {
+        vm.startPrank(user1);
+        address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
+        fastJpegFactory.buy{value: 1 ether}(tokenAddress);
+        vm.stopPrank();
+
+        FastJPEGToken token = FastJPEGToken(tokenAddress);
+
+        assertEq(token.balanceOf(user1), 357_770_876_399966351425467786, "User should have 357770876399966351425467786 FJPGtokens");
+        assertEq(token.balanceOf(fastJpegOwner), 0, "Owner should have 0 FJPG tokens");
+        assertEq(address(fastJpegFactory).balance, 0.99 ether, "Factory should have 0.99 ether");
+        assertEq(fastJpegOwner.balance, 0.01 ether, "Owner should have 0.01 ether");
+    }
+
+    function testSell() public {
+        vm.startPrank(user1);
+        address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
+        fastJpegFactory.buy{value: 1 ether}(tokenAddress);
+        fastJpegFactory.sell(tokenAddress, 100_000_000 * 1e18);
+        vm.stopPrank();
+
+        FastJPEGToken token = FastJPEGToken(tokenAddress);
+
+        assertEq(token.balanceOf(user1), 257_770_876_399966351425467786, "User should have 257770876399966351425467786 FJPG tokens");
+        assertEq(token.balanceOf(fastJpegOwner), 0, "Owner should have 0 FJPG tokens");
+        assertEq(address(fastJpegFactory).balance, 0.509108005625052576 ether, "Factory should have 0.509108005625052576 ether");
+        assertEq(fastJpegOwner.balance, 0.014808919943749474 ether, "Owner should have  0.014808919943749474 ether");
+    }
+
+    function testCreateToken() public {
         // Impersonate user1
         vm.prank(user1);
-        
-        // Call launchToken method and capture the token address
-        address tokenAddress = jpegFactory.launchToken(tokenName, tokenSymbol);
+        address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
         
         // Assertions
         assertTrue(tokenAddress != address(0), "Token address should not be zero");
@@ -62,19 +112,18 @@ contract FastJPEGFactoryTest is BaseTest {
         FastJPEGToken token = FastJPEGToken(tokenAddress);
         assertEq(token.name(), tokenName, "Token name should match");
         assertEq(token.symbol(), tokenSymbol, "Token symbol should match");
-        assertEq(token.totalSupply(), 1_000_000_000 * 10**18, "Token total supply should be 1b");
+        assertEq(token.totalSupply(), 0, "Token total supply should be 1b");
 
         // Get the token info from the factory
-        (address storedTokenAddress, uint256 ethCollected, uint256 tokensSold, bool isPromoted, uint256 airdropEthUsed, address poolAddress) = 
-            jpegFactory.launchedTokens(tokenAddress);
+        (address storedTokenAddress, address poolAddress, uint256 reserveBalance, uint256 tokensSold, bool isGraduated) = 
+            fastJpegFactory.undergraduateTokens(tokenAddress);
             
         // Verify token info in the factory
         assertEq(storedTokenAddress, tokenAddress, "Stored token address should match");
-        assertEq(ethCollected, 0, "Initial ETH collected should be 0");
-        assertEq(tokensSold, 0  , "Tokens sold should be 0");
-        assertFalse(isPromoted, "Token should not be promoted initially");
-        assertEq(airdropEthUsed, 0, "Initial airdrop ETH used should be 0");
         assertEq(poolAddress, address(0), "Pool address should be zero initially");
+        assertEq(reserveBalance, 0, "Initial ETH collected should be 0");
+        assertEq(tokensSold, 0, "Tokens sold should be 0");
+        assertFalse(isGraduated, "Token should not be graduated initially");
         
         // Check token balance
         assertEq(token.balanceOf(user1), 0, "User1 should receive 0 tokens");
@@ -82,7 +131,7 @@ contract FastJPEGFactoryTest is BaseTest {
 
 
     // function testBuyTokens() public {
-    //     address tokenAddress = jpegFactory.launchToken("Fast JPEG Test Token", "FJTT");
+    //     address tokenAddress = jpegFactory.createToken("Fast JPEG Test Token", "FJTT");
 
     //     // Get initial tokensRemaining
     //     (, , uint256 initialTokensRemaining, , ,) = jpegFactory.launchedTokens(tokenAddress);
@@ -107,7 +156,7 @@ contract FastJPEGFactoryTest is BaseTest {
     // }
 
     // function testSellTokens() public {
-    //     address tokenAddress = jpegFactory.launchToken("Fast JPEG Test Token", "FJTT");
+    //     address tokenAddress = jpegFactory.createToken("Fast JPEG Test Token", "FJTT");
 
     //     // Calculate the price for buying 100 tokens
     //     uint256 price = jpegFactory.calculateBuyPrice(tokenAddress, 100);  
@@ -157,7 +206,7 @@ contract FastJPEGFactoryTest is BaseTest {
     //     airdropRecipients[3] = user4;
 
     //     vm.prank(user1);
-    //     address tokenAddress = jpegFactory.launchTokenAirdrop{ value: 1 ether }("Fast JPEG Test Token", "FJTT", airdropRecipients);
+    //     address tokenAddress = jpegFactory.createTokenAirdrop{ value: 1 ether }("Fast JPEG Test Token", "FJTT", airdropRecipients);
 
     //     // Check token balance
     //     assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 40_000_000 * 10**18, "User1 should receive 40m tokens");
