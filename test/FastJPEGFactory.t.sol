@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
-import {Pool} from "../lib/contracts/contracts/Pool.sol";
-import {PoolFactory} from "../lib/contracts/contracts/factories/PoolFactory.sol";
-
 import {Test, console} from "forge-std/Test.sol";
-import {BaseTest} from "../lib/contracts/test/BaseTest.sol";
 import {FastJPEGFactory, FastJPEGToken} from "../src/FastJPEGFactory.sol";
+import "../lib/v2-core/contracts/UniswapV2Factory.sol";
+import "../lib/v2-periphery/contracts/UniswapV2Router02.sol";
 
-contract FastJPEGFactoryTest is BaseTest {
+contract FastJPEGFactoryTest is Test {
+       UniswapV2Factory public factory;
+    UniswapV2Router02 public router;
     FastJPEGFactory public fastJpegFactory;
     string public tokenName = "Fast JPEG Token";
     string public tokenSymbol = "FJPG";
@@ -18,7 +18,8 @@ contract FastJPEGFactoryTest is BaseTest {
     address public user3;
     address public user4;
 
-    function _setUp() public override {
+    function _setUp() public {
+
         fastJpegFactory = new FastJPEGFactory(address(factory), address(router));
         
         // Initialize test users with different addresses

@@ -2,16 +2,15 @@
 pragma solidity ^0.8.19;
 
 import {Test, console} from "forge-std/Test.sol";
-import {BaseTest} from "../lib/contracts/test/BaseTest.sol";
 import {FastJPEGToken} from "../src/FastJPEGToken.sol";
 
-contract FastJPEGTokenTest is BaseTest {
+contract FastJPEGTokenTest is Test {
     FastJPEGToken public fastJpegToken;
     address public fastJpegOwner;
     address public user1;
 
 
-    function _setUp() public override {
+    function _setUp() public {
         fastJpegOwner = address(this);
         user1 = vm.addr(1);
 
