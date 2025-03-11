@@ -218,5 +218,10 @@ contract FastJPEGFactoryTest is BaseTest {
         address lpTokenAddress = factory.getPool(tokenAddress, wethAddress, false);
         assertEq(IERC20(lpTokenAddress).balanceOf(address(fastJpegFactory)), 0, "LP tokens should not be owned by factory address");
         assertEq(IERC20(lpTokenAddress).balanceOf(address(0x000000000000000000000000000000000000dEaD)), 30983866769659335080434, "LP tokens should be owned by 0xdead address");
+
+        // Assert
+        // - it takes 5 ETH tdo get to graduate to Aerodrome 
+        // - 0.1 ETH is paid to Token Creator (Creator Incentive)
+        // - 0.5 ETH is paid to FastJPEGFactory owner (Migration Fee)
     }
 }
