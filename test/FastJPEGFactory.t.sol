@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 import {Test, console} from "forge-std/Test.sol";
 import {FastJPEGFactory, FastJPEGToken} from "../src/FastJPEGFactory.sol";
 import {BaseTest} from "../lib/contracts/test/BaseTest.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 contract FastJPEGFactoryTest is BaseTest {
@@ -209,7 +210,13 @@ contract FastJPEGFactoryTest is BaseTest {
 
 
         (,,,,, bool isGraduated) = fastJpegFactory.tokens(tokenAddress);
-        // check if token is not graduated
-        assertEq(isGraduated, true, "Token should not be graduated");
+        // check if token is graduated
+        assertEq(isGraduated, true, "Token should be graduated");
+        
+        // assert that 0xdead owns the LP tokens
+        address wethAddress = address(router.weth());
+        address lpTokenAddress = factory.getPool(tokenAddress, wethAddress, false);
+        assertEq(IERC20(lpTokenAddress).balanceOf(address(fastJpegFactory)), 0, "LP tokens should not be owned by factory address");
+        assertEq(IERC20(lpTokenAddress).balanceOf(address(0x000000000000000000000000000000000000dEaD)), 30983866769659335080434, "LP tokens should be owned by 0xdead address");
     }
 }
