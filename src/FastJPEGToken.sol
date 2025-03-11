@@ -7,7 +7,7 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Capp
 
 
 contract FastJPEGToken is ERC20, Ownable, ERC20Capped {
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) ERC20Capped(1_000_000_000 * 10**18) Ownable() {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) ERC20Capped(1_000_000_000 * 1e18) Ownable() {
         // Initialize with zero supply, tokens will be minted as needed
     }
 

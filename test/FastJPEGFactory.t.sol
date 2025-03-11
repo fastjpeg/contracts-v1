@@ -134,6 +134,7 @@ contract FastJPEGFactoryTest is BaseTest {
             
         // Verify token info in the factory
         assertEq(storedTokenAddress, tokenAddress, "Stored token address should match");
+        assertEq(creator, user1, "Creator should match");
         assertEq(poolAddress, address(0), "Pool address should be zero initially");
         assertEq(reserveBalance, 0, "Initial ETH collected should be 0");
         assertEq(tokensSold, 0, "Tokens sold should be 0");
@@ -185,5 +186,30 @@ contract FastJPEGFactoryTest is BaseTest {
         assertEq(address(fastJpegFactory).balance, 0 ether, "Factory should have 0 ether");
         assertEq(fastJpegOwner.balance, 0 ether, "Owner should have 0 ether");
         assertEq(user1.balance, 100 ether, "User1 should have 100 ether");
+    }
+
+    function testNotGraduateToken() public {
+        vm.startPrank(user1);
+        address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
+        fastJpegFactory.buy{value: 5 ether}(tokenAddress);
+        vm.stopPrank();
+
+
+        (,,,,, bool isGraduated) = fastJpegFactory.tokens(tokenAddress);
+        // check if token is not graduated
+        assertEq(isGraduated, false, "Token should not be graduated");
+    }
+
+    
+    function testGraduateToken() public {
+        vm.startPrank(user1);
+        address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
+        fastJpegFactory.buy{value: 6 ether}(tokenAddress);
+        vm.stopPrank();
+
+
+        (,,,,, bool isGraduated) = fastJpegFactory.tokens(tokenAddress);
+        // check if token is not graduated
+        assertEq(isGraduated, true, "Token should not be graduated");
     }
 }
