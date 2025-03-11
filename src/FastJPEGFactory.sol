@@ -10,6 +10,7 @@ import "../lib/contracts/contracts/interfaces/IRouter.sol";
 import "../lib/contracts/contracts/interfaces/IPool.sol";
 
 contract FastJPEGFactory is Ownable {
+    address constant BURN_ADDRESS = address(0x000000000000000000000000000000000000dEaD);
     uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 1e18; // 800M tokens with 18 decimals
     uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 1e18; // 200M tokens with 18 decimals
     uint256 public constant AIRDROP_SUPPLY = 160_000_000 * 1e18; // 160 million tokens
@@ -309,12 +310,13 @@ contract FastJPEGFactory is Ownable {
         console.log("lpTokenAddress", lpTokenAddress);
 
         console.log("lpTokenBalance", IERC20(lpTokenAddress).balanceOf(address(this)));
-        // IERC20(lpTokenAddress).approve(address(router), liquidity);
-        // IERC20(lpTokenAddress).transfer(address(0), liquidity);
+        IERC20(lpTokenAddress).approve(address(router), liquidity);
+        // THIS DOESNT WORK [FAIL: revert: ERC20: transfer to the zero address] testGraduateToken() (gas: 2061435)
+        IERC20(lpTokenAddress).transfer(BURN_ADDRESS, liquidity);
 
         // // Tranfer ownership to null address
-        // FastJPEGToken(tokenAddress).transferOwnership(address(0));
-        // emit TokenGraduated(tokenAddress);
+        FastJPEGToken(tokenAddress).renounceOwnership();
+        emit TokenGraduated(tokenAddress);
     }
 
     function _tokenInfo(address tokenAddress) internal view returns (TokenInfo storage) {
