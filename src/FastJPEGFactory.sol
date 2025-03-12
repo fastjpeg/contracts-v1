@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
-import {console} from "forge-std/console.sol";
+
+import { console } from "forge-std/console.sol";
 import { FastJPEGToken } from "./FastJPEGToken.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -24,8 +25,8 @@ contract FastJPEGFactory is Ownable {
     uint256 public constant CREATOR_REWARD_FEE = 0.1 ether; // 0.1 ETH to creator
 
     uint256 public constant AIRDROP_ETH = 2 ether; // 2 ETH to airdrop
-    
-        // DEX
+
+    // DEX
     IPoolFactory public immutable poolFactory;
     IRouter public immutable router;
 
@@ -40,8 +41,6 @@ contract FastJPEGFactory is Ownable {
     }
 
     mapping(address => TokenInfo) public tokens;
-    
-
 
     // Events
     event TokenCreated(address indexed token, address indexed creator);
@@ -60,6 +59,7 @@ contract FastJPEGFactory is Ownable {
      * @param name The name of the token
      * @param symbol The symbol of the token
      */
+
     function createToken(string memory name, string memory symbol) public payable returns (address) {
         address[] memory emptyRecipients = new address[](0);
         return createTokenAirdrop(name, symbol, emptyRecipients);
@@ -71,10 +71,14 @@ contract FastJPEGFactory is Ownable {
      * @param symbol The symbol of the token
      * @param airdropRecipients Optional array of addresses to airdrop tokens to (if msg.value >= 1 ETH)
      */
-    function createTokenAirdrop(string memory name, string memory symbol, address[] memory airdropRecipients) public payable returns (address) {
+    function createTokenAirdrop(string memory name, string memory symbol, address[] memory airdropRecipients)
+        public
+        payable
+        returns (address)
+    {
         // Deploy new token - only mint bonding supply to contract initially
         FastJPEGToken newToken = new FastJPEGToken(name, symbol);
-        
+
         // Initialize token info
         TokenInfo storage tokenInfo = tokens[address(newToken)];
         tokenInfo.tokenAddress = address(newToken);
@@ -86,10 +90,10 @@ contract FastJPEGFactory is Ownable {
         // If user sent 1 ETH and provided recipients, perform airdrop
         if (msg.value >= AIRDROP_ETH && airdropRecipients.length > 0) {
             uint256 fee = (AIRDROP_ETH * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
-            
+
             // Send fee to contract owner
             payable(owner()).transfer(fee);
-            
+
             // Distribute tokens evenly among recipients by minting directly to them
             uint256 tokensPerRecipient = AIRDROP_SUPPLY / airdropRecipients.length;
             for (uint256 i = 0; i < airdropRecipients.length; i++) {
@@ -97,7 +101,7 @@ contract FastJPEGFactory is Ownable {
                 newToken.mint(airdropRecipients[i], tokensPerRecipient);
                 emit AirdropIssued(address(newToken), airdropRecipients[i], tokensPerRecipient);
             }
-            
+
             // Refund excess ETH if any
             if (msg.value > AIRDROP_ETH) {
                 payable(msg.sender).transfer(msg.value - AIRDROP_ETH);
@@ -118,7 +122,7 @@ contract FastJPEGFactory is Ownable {
         TokenInfo storage tokenInfo = _tokenInfo(tokenAddress);
         require(!tokenInfo.isGraduated, "Token been graduated, buys disabled");
         require(msg.value > 0, "Must send ETH");
-        
+
         require(tokenInfo.tokensSold < UNDERGRADUATE_SUPPLY, "Max supply reached");
 
         uint256 purchaseEthBeforeFee = msg.value;
@@ -133,7 +137,7 @@ contract FastJPEGFactory is Ownable {
         // Ensure we don't exceed max supply
         if (tokenInfo.tokensSold + tokensToMint > UNDERGRADUATE_SUPPLY) {
             tokensToMint = UNDERGRADUATE_SUPPLY - tokenInfo.tokensSold;
-            
+
             // Calculate actual ETH needed and refund excess
             purchaseEthBeforeFee = calculatePriceForTokens(tokensToMint, tokenInfo.tokensSold);
             if (msg.value > purchaseEthBeforeFee) {
@@ -143,13 +147,12 @@ contract FastJPEGFactory is Ownable {
             purchaseEth = purchaseEthBeforeFee - fee;
         }
 
-
         // Send fee to owner
         payable(owner()).transfer(fee);
-        
+
         // Update reserve balance with the ETH used (after fee)
         tokenInfo.reserveBalance += purchaseEth;
-        
+
         // Mint tokens to the buyer
         FastJPEGToken(tokenAddress).mint(msg.sender, tokensToMint);
 
@@ -169,9 +172,9 @@ contract FastJPEGFactory is Ownable {
         require(!tokenInfo.isGraduated, "Token graduated, sells disabled");
         require(tokenAmount > 0, "Amount must be positive");
         require(FastJPEGToken(tokenAddress).balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
-        
+
         uint256 currentSupply = FastJPEGToken(tokenAddress).totalSupply();
-        
+
         // Calculate ETH to return based on the bonding curve
         uint256 returnEthBeforeFee = calculateSaleReturn(tokenAmount, currentSupply);
 
@@ -183,13 +186,13 @@ contract FastJPEGFactory is Ownable {
 
         // Burn tokens
         FastJPEGToken(tokenAddress).burn(msg.sender, tokenAmount);
-        
+
         // Update reserve balance
         tokenInfo.reserveBalance -= returnEth;
-        
+
         // Send fee to owner
         payable(owner()).transfer(fee);
-        
+
         // Send ETH to seller (after fee)
         payable(msg.sender).transfer(returnEth);
 
@@ -197,7 +200,7 @@ contract FastJPEGFactory is Ownable {
         tokenInfo.tokensSold -= tokenAmount;
     }
 
-        /**
+    /**
      * @dev Calculate how many tokens to mint for a given ETH amount
      * @param ethAmount Amount of ETH sent
      * @param currentSupply Current total supply
@@ -209,14 +212,14 @@ contract FastJPEGFactory is Ownable {
         // Calculate: (E * UNDERGRADUATE_SUPPLY²) / GRADUATE_ETH
         uint256 numerator = ethAmount * (UNDERGRADUATE_SUPPLY ** 2);
         uint256 term1 = numerator / GRADUATE_ETH;
-        
+
         // Add currentSupply²
         uint256 term2 = currentSupply ** 2;
         uint256 sumUnderRoot = term1 + term2;
-        
+
         // Take square root and subtract currentSupply
         uint256 newTotalSupply = Math.sqrt(sumUnderRoot);
-        
+
         return newTotalSupply > currentSupply ? newTotalSupply - currentSupply : 0;
     }
 
@@ -228,22 +231,22 @@ contract FastJPEGFactory is Ownable {
      */
     function calculatePriceForTokens(uint256 tokenAmount, uint256 currentSupply) public pure returns (uint256) {
         // For a quadratic curve: E = (GRADUATE_ETH * ((currentSupply + T)² - currentSupply²)) / UNDERGRADUATE_SUPPLY²
-        
+
         uint256 newSupply = currentSupply + tokenAmount;
-        
+
         // Calculate: (currentSupply + T)² - currentSupply²
         uint256 newSupplySquared = newSupply ** 2;
         uint256 currentSupplySquared = currentSupply ** 2;
         uint256 supplyDeltaSquared = newSupplySquared - currentSupplySquared;
-        
+
         // Calculate: (GRADUATE_ETH * supplyDeltaSquared) / UNDERGRADUATE_SUPPLY²
         uint256 numerator = GRADUATE_ETH * supplyDeltaSquared;
         uint256 denominator = UNDERGRADUATE_SUPPLY ** 2;
-        
+
         return numerator / denominator;
     }
-    
-        /**
+
+    /**
      * @dev Calculate how much ETH to return when selling tokens
      * @param tokenAmount Amount of tokens to sell
      * @param currentSupply Current total supply
@@ -253,7 +256,7 @@ contract FastJPEGFactory is Ownable {
         // Uses the same formula as calculatePriceForTokens but in reverse
         return calculatePriceForTokens(tokenAmount, currentSupply - tokenAmount);
     }
-    
+
     /**
      * @dev Internal function to graduate a token to Aerodrome
      * @param tokenAddress The address of the token to graduate
@@ -262,7 +265,7 @@ contract FastJPEGFactory is Ownable {
         TokenInfo storage tokenInfo = tokens[tokenAddress];
         require(!tokenInfo.isGraduated, "Token already graduated");
         tokenInfo.isGraduated = true;
-        
+
         // uint256 totalSupply = ERC20(tokenAddress).totalSupply();
         // console.log("totalSupply", totalSupply);
         // console.log("tokenInfo.reserveBalance", tokenInfo.reserveBalance);
@@ -270,14 +273,13 @@ contract FastJPEGFactory is Ownable {
 
         //mint graduation supply factory
         FastJPEGToken(tokenAddress).mint(address(this), GRADUATE_SUPPLY);
-        
+
         // // Approve router to spend tokens
         // ERC20(tokenAddress).approve(address(router), GRADUATE_SUPPLY);
         // console.log("totalSupply", ERC20(tokenAddress).totalSupply());
 
-        
         // pay owner GRADUATION_FEE
-        payable(owner()).transfer(GRADUATION_FEE); 
+        payable(owner()).transfer(GRADUATION_FEE);
         // pay creator CREATOR_REWARD_FEE
         payable(tokenInfo.creator).transfer(CREATOR_REWARD_FEE);
         // remaining ETH used for liquidity
@@ -290,10 +292,8 @@ contract FastJPEGFactory is Ownable {
         // Allow dex to reach in and pull tokens
         FastJPEGToken(tokenAddress).approve(address(router), GRADUATE_SUPPLY);
 
-    
-
         // Add liquidity to Aerodrome
-        (,, uint256 liquidity) = router.addLiquidityETH{value: liquidityEthAfterFee}(
+        (,, uint256 liquidity) = router.addLiquidityETH{ value: liquidityEthAfterFee }(
             tokenAddress,
             false, // volatile pool
             GRADUATE_SUPPLY,
@@ -322,5 +322,5 @@ contract FastJPEGFactory is Ownable {
     }
 
     // Function to receive ETH
-    receive() external payable {}
+    receive() external payable { }
 }
