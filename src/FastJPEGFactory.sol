@@ -15,15 +15,15 @@ contract FastJPEGFactory is Ownable {
     uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 1e18; // 200M tokens with 18 decimals
     uint256 public constant AIRDROP_SUPPLY = 160_000_000 * 1e18; // 160 million tokens
 
-    uint256 public constant GRADUATE_ETH = 5 ether; // 5 ETH to graduate token
+    uint256 public constant GRADUATE_ETH = 10 ether; // 10 ETH to graduate token
 
     uint256 public constant UNDERGRADUATE_FEE_BPS = 100; // 1% fee
     uint256 public constant BPS_DENOMINATOR = 10000; // 100% = 10000 BPS
 
-    uint256 public constant GRADUATION_FEE = 0.1 ether; // 0.1 ETH to graduate token
-    uint256 public constant CREATOR_REWARD_FEE = 0.05 ether; // 0.05 ETH to creator
+    uint256 public constant GRADUATION_FEE = 0.5 ether; // 0.5 ETH to graduate token
+    uint256 public constant CREATOR_REWARD_FEE = 0.1 ether; // 0.1 ETH to creator
 
-    uint256 public constant AIRDROP_ETH = 1 ether; // 1 ETH to airdrop
+    uint256 public constant AIRDROP_ETH = 2 ether; // 2 ETH to airdrop
     
         // DEX
     IPoolFactory public immutable poolFactory;
@@ -99,8 +99,8 @@ contract FastJPEGFactory is Ownable {
             }
             
             // Refund excess ETH if any
-            if (msg.value > 1 ether) {
-                payable(msg.sender).transfer(msg.value - 1 ether);
+            if (msg.value > AIRDROP_ETH) {
+                payable(msg.sender).transfer(msg.value - AIRDROP_ETH);
             }
         } else if (msg.value > 0) {
             // Refund any ETH if no airdrop performed

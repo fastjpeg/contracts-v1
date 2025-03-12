@@ -41,51 +41,51 @@ contract FastJPEGFactoryTest is BaseTest {
     }
 
     function testCalculatePurchaseAmount() public view {
-        uint256 tokensToMint1Ether = fastJpegFactory.calculatePurchaseAmount(1 ether, 0);
-        assertEq(tokensToMint1Ether, 357_770_876_399966351425467786);
+        uint256 tokensToMint1Ether = fastJpegFactory.calculatePurchaseAmount(2 ether, 0);
+        assertEq(tokensToMint1Ether, 357_770_876.399966351425467786 ether);
 
-        uint256 tokensToMint2Ether = fastJpegFactory.calculatePurchaseAmount(2 ether, 0);
-        assertEq(tokensToMint2Ether, 505_964_425_626940693119822967);    
+        uint256 tokensToMint2Ether = fastJpegFactory.calculatePurchaseAmount(4 ether, 0);
+        assertEq(tokensToMint2Ether, 505_964_425.626940693119822967 ether);    
 
-        uint256 tokensToMint3Ether = fastJpegFactory.calculatePurchaseAmount(3 ether, 0); 
-        assertEq(tokensToMint3Ether, 619_677_335_393186701628682463);
+        uint256 tokensToMint3Ether = fastJpegFactory.calculatePurchaseAmount(6 ether, 0); 
+        assertEq(tokensToMint3Ether, 619_677_335.393186701628682463 ether);
 
-        uint256 tokensToMint4Ether = fastJpegFactory.calculatePurchaseAmount(4 ether, 0);
-        assertEq(tokensToMint4Ether, 715_541_752_799932702850935573);
+        uint256 tokensToMint4Ether = fastJpegFactory.calculatePurchaseAmount(8 ether, 0);
+        assertEq(tokensToMint4Ether, 715_541_752.799932702850935573 ether);
 
-        uint256 tokensToMint5Ether = fastJpegFactory.calculatePurchaseAmount(5 ether, 0);
-        assertEq(tokensToMint5Ether, 800_000_000_000000000000000000);        
+        uint256 tokensToMint5Ether = fastJpegFactory.calculatePurchaseAmount(10 ether, 0);
+        assertEq(tokensToMint5Ether, 800_000_000 ether);        
     }
 
     function testCalculateSaleReturn() public view {
         uint256 priceFor100Tokens = fastJpegFactory.calculateSaleReturn(100_000_000 * 1e18, 400_000_000 * 1e18);  
-        assertEq(priceFor100Tokens, 546875000000000000);
+        assertEq(priceFor100Tokens, 1.093750000000000000 ether);
 
         uint256 priceFor200Tokens = fastJpegFactory.calculateSaleReturn(200_000_000 * 1e18, 400_000_000 * 1e18);  
-        assertEq(priceFor200Tokens, 937500000000000000);
+        assertEq(priceFor200Tokens, 1.875000000000000000 ether);
 
         uint256 priceFor300Tokens = fastJpegFactory.calculateSaleReturn(800_000_000 * 1e18, 800_000_000 * 1e18); 
-        assertEq(priceFor300Tokens, 5 ether);
+        assertEq(priceFor300Tokens, 10 ether);
     }        
 
     function testBuy() public {
         vm.startPrank(user1);
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
-        fastJpegFactory.buy{value: 1 ether}(tokenAddress);
+        fastJpegFactory.buy{value: 2 ether}(tokenAddress);
         vm.stopPrank();
 
         FastJPEGToken token = FastJPEGToken(tokenAddress);
 
         assertEq(token.balanceOf(user1), 355977527380591821538147077, "User should have 355977527380591821538147077 FJPGtokens");
         assertEq(token.balanceOf(fastJpegOwner), 0, "Owner should have 0 FJPG tokens");
-        assertEq(address(fastJpegFactory).balance, 0.99 ether, "Factory should have 0.99 ether");
-        assertEq(fastJpegOwner.balance, 0.01 ether, "Owner should have 0.01 ether");
+        assertEq(address(fastJpegFactory).balance, 1.98 ether, "Factory should have 0.99 ether");
+        assertEq(fastJpegOwner.balance, 0.02 ether, "Owner should have 0.01 ether");
     }
 
     function testSell() public {
         vm.startPrank(user1);
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
-        fastJpegFactory.buy{value: 1 ether}(tokenAddress);
+        fastJpegFactory.buy{value: 2 ether}(tokenAddress);
         fastJpegFactory.sell(tokenAddress, 100_000_000 * 1e18);
         vm.stopPrank();
 
@@ -93,8 +93,8 @@ contract FastJPEGFactoryTest is BaseTest {
 
         assertEq(token.balanceOf(user1), 255977527380591821538147077, "User should have 255977527380591821538147077 FJPG tokens");
         assertEq(token.balanceOf(fastJpegOwner), 0, "Owner should have 0 FJPG tokens");
-        assertEq(address(fastJpegFactory).balance, 0.511910113467825279 ether, "Factory should have 0.511910113467825279 ether");
-        assertEq(fastJpegOwner.balance, 0.014780898865321747 ether, "Owner should have  0.014780898865321747 ether");
+        assertEq(address(fastJpegFactory).balance, 1.023820226935650558 ether, "Factory should have 1.023820226935650558 ether");
+        assertEq(fastJpegOwner.balance, 0.029561797730643494 ether, "Owner should have  0.029561797730643494 ether");
     }
 
     function testSellAll() public {
@@ -153,7 +153,7 @@ contract FastJPEGFactoryTest is BaseTest {
         airdropRecipients[3] = user4;
 
         vm.startPrank(user1);
-        address tokenAddress = fastJpegFactory.createTokenAirdrop{value: 1 ether}(tokenName, tokenSymbol, airdropRecipients);
+        address tokenAddress = fastJpegFactory.createTokenAirdrop{value: 2 ether}(tokenName, tokenSymbol, airdropRecipients);
         vm.stopPrank();
 
         // Check token balance
@@ -171,12 +171,12 @@ contract FastJPEGFactoryTest is BaseTest {
         airdropRecipients[3] = user4;
 
         vm.startPrank(user1);
-        fastJpegFactory.createTokenAirdrop{value: 2 ether}(tokenName, tokenSymbol, airdropRecipients);
+        fastJpegFactory.createTokenAirdrop{value: 4 ether}(tokenName, tokenSymbol, airdropRecipients);
         vm.stopPrank();
 
-        assertEq(address(fastJpegFactory).balance, 0.99 ether, "Factory should have 1 ether");
-        assertEq(fastJpegOwner.balance, 0.01 ether, "Owner should have 0.01 ether");
-        assertEq(user1.balance, 99 ether, "User1 should have 99 ether");
+        assertEq(address(fastJpegFactory).balance, 1.98 ether, "Factory should have 1.98 ether");
+        assertEq(fastJpegOwner.balance, 0.02 ether, "Owner should have 0.02 ether");
+        assertEq(user1.balance, 98 ether, "User1 should have 98 ether");
     }
 
     function testCreateTokenAirdropNoRecipients() public {
@@ -192,7 +192,7 @@ contract FastJPEGFactoryTest is BaseTest {
     function testNotGraduateToken() public {
         vm.startPrank(user1);
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
-        fastJpegFactory.buy{value: 5 ether}(tokenAddress);
+        fastJpegFactory.buy{value: 10 ether}(tokenAddress);
         vm.stopPrank();
 
 
@@ -205,7 +205,7 @@ contract FastJPEGFactoryTest is BaseTest {
     function testGraduateToken() public {
         vm.startPrank(user1);
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
-        fastJpegFactory.buy{value: 6 ether}(tokenAddress);
+        fastJpegFactory.buy{value: 12 ether}(tokenAddress);
         vm.stopPrank();
 
 
@@ -217,7 +217,7 @@ contract FastJPEGFactoryTest is BaseTest {
         address wethAddress = address(router.weth());
         address lpTokenAddress = factory.getPool(tokenAddress, wethAddress, false);
         assertEq(IERC20(lpTokenAddress).balanceOf(address(fastJpegFactory)), 0, "LP tokens should not be owned by factory address");
-        assertEq(IERC20(lpTokenAddress).balanceOf(address(0x000000000000000000000000000000000000dEaD)), 30983866769659335080434, "LP tokens should be owned by 0xdead address");
+        assertEq(IERC20(lpTokenAddress).balanceOf(address(0x000000000000000000000000000000000000dEaD)), 43127717305695649348467, "LP tokens should be owned by 0xdead address");
 
         // Assert
         // - it takes 5 ETH tdo get to graduate to Aerodrome 
