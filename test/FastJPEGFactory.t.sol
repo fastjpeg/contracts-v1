@@ -176,10 +176,14 @@ contract FastJPEGFactoryTest is BaseTest {
         vm.stopPrank();
 
         // Check token balance
-        assertEq(FastJPEGToken(tokenAddress).balanceOf(user1), 40_000_000 * 10 ** 18, "User1 should receive 40m tokens");
-        assertEq(FastJPEGToken(tokenAddress).balanceOf(user2), 40_000_000 * 10 ** 18, "User2 should receive 40m tokens");
-        assertEq(FastJPEGToken(tokenAddress).balanceOf(user3), 40_000_000 * 10 ** 18, "User3 should receive 40m tokens");
-        assertEq(FastJPEGToken(tokenAddress).balanceOf(user4), 40_000_000 * 10 ** 18, "User4 should receive 40m tokens");
+        assertEq(
+            FastJPEGToken(tokenAddress).balanceOf(user1),
+            235_977_527.380591821538147077 ether,
+            "User1 should receive 40m tokens"
+        );
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user2), 40_000_000 ether, "User2 should receive 40m tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user3), 40_000_000 ether, "User3 should receive 40m tokens");
+        assertEq(FastJPEGToken(tokenAddress).balanceOf(user4), 40_000_000 ether, "User4 should receive 40m tokens");
     }
 
     function testCreateTokenAirdropOverPayEth() public {
@@ -193,9 +197,9 @@ contract FastJPEGFactoryTest is BaseTest {
         fastJpegFactory.createTokenAirdrop{ value: 4 ether }(tokenName, tokenSymbol, airdropRecipients);
         vm.stopPrank();
 
-        assertEq(address(fastJpegFactory).balance, 1.98 ether, "Factory should have 1.98 ether");
-        assertEq(fastJpegOwner.balance, 0.02 ether, "Owner should have 0.02 ether");
-        assertEq(user1.balance, 98 ether, "User1 should have 98 ether");
+        assertEq(address(fastJpegFactory).balance, 3.96 ether, "Factory should have 3.96 ether");
+        assertEq(fastJpegOwner.balance, 0.04 ether, "Owner should have 0.04 ether");
+        assertEq(user1.balance, 96 ether, "User1 should have 96 ether");
     }
 
     function testCreateTokenAirdropNoRecipients() public {

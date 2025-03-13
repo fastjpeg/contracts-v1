@@ -58,7 +58,7 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+$ forge script script/FastJPEGFactory.s.sol:FastJPEGFactoryScript --rpc-url anvil --broadcast --verify -vvvv --sender 0x0000000000000000000000000000000000000000
 ```
 
 ### Cast
@@ -66,6 +66,11 @@ $ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --pri
 ```shell
 $ cast <subcommand>
 ```
+
+### Genreate ABI
+```sh
+forge build --silent && jq '.abi' ./out/FastJPEGFactory.sol/FastJPEGFactory.json
+``` 
 
 ### Help
 
