@@ -69,7 +69,7 @@ contract FastJPEGFactory is Ownable {
      * @dev Launches a new token with the specified name and symbol
      * @param name The name of the token
      * @param symbol The symbol of the token
-     * @param airdropRecipients Optional array of addresses to airdrop tokens to (if msg.value >= 1 ETH)
+     * @param airdropRecipients Optional array of addresses to airdrop tokens to (if msg.value >= 2 ETH)
      */
     function createTokenAirdrop(string memory name, string memory symbol, address[] memory airdropRecipients)
         public
@@ -87,79 +87,68 @@ contract FastJPEGFactory is Ownable {
         tokenInfo.tokensSold = 0;
         tokenInfo.isGraduated = false;
 
-        // If user sent 1 ETH and provided recipients, perform airdrop
-        if (msg.value >= AIRDROP_ETH && airdropRecipients.length > 0) {
-            uint256 fee = (AIRDROP_ETH * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
-
-            // Send fee to contract owner
-            payable(owner()).transfer(fee);
-
-            // Distribute tokens evenly among recipients by minting directly to them
-            uint256 tokensPerRecipient = AIRDROP_SUPPLY / airdropRecipients.length;
-            for (uint256 i = 0; i < airdropRecipients.length; i++) {
-                require(airdropRecipients[i] != address(0), "Invalid recipient address");
-                newToken.mint(airdropRecipients[i], tokensPerRecipient);
-                emit AirdropIssued(address(newToken), airdropRecipients[i], tokensPerRecipient);
-            }
-
-            // Refund excess ETH if any
-            if (msg.value > AIRDROP_ETH) {
-                payable(msg.sender).transfer(msg.value - AIRDROP_ETH);
-            }
-        } else if (msg.value > 0) {
-            // Refund any ETH if no airdrop performed
-            payable(msg.sender).transfer(msg.value);
+        if (msg.value > 0) {
+            _buy(address(newToken), airdropRecipients);
         }
 
         emit TokenCreated(address(newToken), msg.sender);
         return address(newToken);
     }
 
+    function buy(address tokenAddress) external payable {
+        address[] memory emptyRecipients = new address[](0);
+        _buy(tokenAddress, emptyRecipients);
+    }
+
     /**
      * @dev Buy tokens using ETH
      */
-    function buy(address tokenAddress) external payable {
+    function _buy(address tokenAddress, address[] memory airdropRecipients) internal {
         TokenInfo storage tokenInfo = _tokenInfo(tokenAddress);
         require(!tokenInfo.isGraduated, "Token been graduated, buys disabled");
         require(msg.value > 0, "Must send ETH");
-
         require(tokenInfo.tokensSold < UNDERGRADUATE_SUPPLY, "Max supply reached");
 
-        uint256 purchaseEthBeforeFee = msg.value;
+        uint256 totalEthRaised = tokenInfo.reserveBalance + msg.value;
+        uint256 purchaseEthBeforeFee = Math.min(totalEthRaised, GRADUATE_ETH);
+        uint256 refundEth = totalEthRaised - purchaseEthBeforeFee;
 
-        // Calculate 1% fee
+        uint256 tokensToMint = calculatePurchaseAmount(purchaseEthBeforeFee, tokenInfo.tokensSold);
+        uint256 totalTokensSold = tokenInfo.tokensSold + tokensToMint;
+        uint256 airdropTokens = 0;
         uint256 fee = (purchaseEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
-        uint256 purchaseEth = purchaseEthBeforeFee - fee;
 
-        // Calculate tokens to mint based on the bonding curve
-        uint256 tokensToMint = calculatePurchaseAmount(purchaseEth, tokenInfo.tokensSold);
-
-        // Ensure we don't exceed max supply
-        if (tokenInfo.tokensSold + tokensToMint > UNDERGRADUATE_SUPPLY) {
-            tokensToMint = UNDERGRADUATE_SUPPLY - tokenInfo.tokensSold;
-
-            // Calculate actual ETH needed and refund excess
-            purchaseEthBeforeFee = calculatePriceForTokens(tokensToMint, tokenInfo.tokensSold);
-            if (msg.value > purchaseEthBeforeFee) {
-                payable(msg.sender).transfer(msg.value - purchaseEthBeforeFee);
-            }
-            fee = (purchaseEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
-            purchaseEth = purchaseEthBeforeFee - fee;
+        if (totalTokensSold < UNDERGRADUATE_SUPPLY) {
+            uint256 purchaseEth = purchaseEthBeforeFee - fee;
+            tokensToMint = calculatePurchaseAmount(purchaseEth, tokenInfo.tokensSold);
         }
 
-        // Send fee to owner
-        payable(owner()).transfer(fee);
+        if (tokensToMint > 0 && airdropRecipients.length > 0) {
+            airdropTokens = Math.min(tokensToMint, AIRDROP_SUPPLY);
+            uint256 tokensPerRecipient = airdropTokens / airdropRecipients.length;
+            tokenInfo.tokensSold += airdropTokens;
 
-        // Update reserve balance with the ETH used (after fee)
-        tokenInfo.reserveBalance += purchaseEth;
+            for (uint256 i = 0; i < airdropRecipients.length; i++) {
+                require(airdropRecipients[i] != address(0), "Invalid recipient address");
+                FastJPEGToken(tokenAddress).mint(airdropRecipients[i], tokensPerRecipient);
+                emit AirdropIssued(tokenAddress, airdropRecipients[i], tokensPerRecipient);
+            }
+        }
 
-        // Mint tokens to the buyer
-        FastJPEGToken(tokenAddress).mint(msg.sender, tokensToMint);
+        uint256 remainingTokens = tokensToMint - airdropTokens;
 
-        tokenInfo.tokensSold += tokensToMint;
+        if (remainingTokens > 0) {
+            FastJPEGToken(tokenAddress).mint(msg.sender, remainingTokens);
+            tokenInfo.tokensSold += remainingTokens;
+        }
 
-        if (tokenInfo.tokensSold >= UNDERGRADUATE_SUPPLY) {
-            _graduateToken(tokenAddress);
+        if (totalEthRaised > GRADUATE_ETH) {
+            payable(msg.sender).transfer(refundEth);
+            tokenInfo.reserveBalance = GRADUATE_ETH;
+            _graduateToken(tokenAddress, fee);
+        } else {
+            payable(owner()).transfer(fee);
+            tokenInfo.reserveBalance += purchaseEthBeforeFee;
         }
     }
 
@@ -260,34 +249,23 @@ contract FastJPEGFactory is Ownable {
     /**
      * @dev Internal function to graduate a token to Aerodrome
      * @param tokenAddress The address of the token to graduate
+     * @param fee The amount of ETH to graduate the token
      */
-    function _graduateToken(address tokenAddress) internal {
+    function _graduateToken(address tokenAddress, uint256 fee) internal {
         TokenInfo storage tokenInfo = tokens[tokenAddress];
         require(!tokenInfo.isGraduated, "Token already graduated");
         tokenInfo.isGraduated = true;
 
-        // uint256 totalSupply = ERC20(tokenAddress).totalSupply();
-        // console.log("totalSupply", totalSupply);
-        // console.log("tokenInfo.reserveBalance", tokenInfo.reserveBalance);
-        // console.log("tokenInfo.tokensSold", tokenInfo.tokensSold);
-
         //mint graduation supply factory
         FastJPEGToken(tokenAddress).mint(address(this), GRADUATE_SUPPLY);
 
-        // // Approve router to spend tokens
-        // ERC20(tokenAddress).approve(address(router), GRADUATE_SUPPLY);
-        // console.log("totalSupply", ERC20(tokenAddress).totalSupply());
-
+        uint256 ownerFee = GRADUATION_FEE + fee;
         // pay owner GRADUATION_FEE
-        payable(owner()).transfer(GRADUATION_FEE);
+        payable(owner()).transfer(ownerFee);
         // pay creator CREATOR_REWARD_FEE
         payable(tokenInfo.creator).transfer(CREATOR_REWARD_FEE);
         // remaining ETH used for liquidity
-        uint256 liquidityEthAfterFee = tokenInfo.reserveBalance - GRADUATION_FEE - CREATOR_REWARD_FEE;
-
-        // // log balance of contract
-        // console.log("balance of contract", address(this).balance);
-        // console.log("liquidityEthAfterFee", liquidityEthAfterFee);
+        uint256 liquidityEthAfterFee = tokenInfo.reserveBalance - ownerFee - CREATOR_REWARD_FEE;
 
         // Allow dex to reach in and pull tokens
         FastJPEGToken(tokenAddress).approve(address(router), GRADUATE_SUPPLY);
