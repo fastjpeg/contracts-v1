@@ -48,10 +48,9 @@ contract FastJPEGFactory is Ownable {
     event AirdropIssued(address indexed token, address indexed recipient, uint256 amount);
     event TokenGraduated(address indexed token);
 
-    constructor(address _poolFactory, address _router) Ownable() {
+    constructor(address _poolFactory, address _router) Ownable(msg.sender) {
         poolFactory = IUniswapV2Factory(_poolFactory);
         router = IUniswapV2Router02(_router);
-        _transferOwnership(msg.sender);
     }
     /**
      * @dev Launches a new token with the specified name and symbol without airdrop recipients

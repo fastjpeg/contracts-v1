@@ -3,10 +3,16 @@ pragma solidity ^0.8.19;
 
 import { Test, console } from "forge-std/Test.sol";
 import { FastJPEGFactory, FastJPEGToken } from "../src/FastJPEGFactory.sol";
-import { BaseTest } from "../lib/contracts/test/BaseTest.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IUniswapV2Factory } from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+import { IUniswapV2Router02 } from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import { WETH } from "../lib/solmate/src/tokens/WETH.sol";
 
-contract FastJPEGFactoryTest is BaseTest {
+
+contract FastJPEGFactoryTest is Test {
+    IUniswapV2Factory public factory;
+    IUniswapV2Router02 public router;
+    WETH public weth;
     FastJPEGFactory public fastJpegFactory;
     string public tokenName = "Fast JPEG Token";
     string public tokenSymbol = "FJPG";
@@ -17,7 +23,17 @@ contract FastJPEGFactoryTest is BaseTest {
     address public user3;
     address public user4;
 
-    function _setUp() public override {
+    function setUp() public {
+        // Deploy Uniswap V2 Factory
+        factory = IUniswapV2Factory(address(this));
+
+        // Deploy WETH
+        weth = new WETH();
+
+        // Deploy Uniswap V2 Router
+        router = IUniswapV2Router02(address(factory), address(weth));
+
+        // Deploy FastJPEGFactory
         fastJpegFactory = new FastJPEGFactory(address(factory), address(router));
 
         // Initialize test users with different addresses
@@ -234,8 +250,8 @@ contract FastJPEGFactoryTest is BaseTest {
         assertEq(isGraduated, true, "Token should be graduated");
 
         // assert that 0xdead owns the LP tokens
-        address wethAddress = address(router.weth());
-        address lpTokenAddress = factory.getPool(tokenAddress, wethAddress, false);
+        address wethAddress = address(router.WETH());
+        address lpTokenAddress = factory.getPair(tokenAddress, wethAddress);
         assertEq(
             IERC20(lpTokenAddress).balanceOf(address(fastJpegFactory)),
             0,
