@@ -6,9 +6,8 @@ import { FastJPEGToken } from "./FastJPEGToken.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../lib/contracts/contracts/interfaces/factories/IPoolFactory.sol";
-import "../lib/contracts/contracts/interfaces/IRouter.sol";
-import "../lib/contracts/contracts/interfaces/IPool.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract FastJPEGFactory is Ownable {
     address public constant BURN_ADDRESS = address(0x000000000000000000000000000000000000dEaD);
@@ -27,8 +26,8 @@ contract FastJPEGFactory is Ownable {
     uint256 public constant AIRDROP_ETH = 2 ether; // 2 ETH to airdrop
 
     // DEX
-    IPoolFactory public immutable poolFactory;
-    IRouter public immutable router;
+    IUniswapV2Factory public immutable poolFactory;
+    IUniswapV2Router02 public immutable router;
 
     // State variables
     struct TokenInfo {
@@ -50,8 +49,8 @@ contract FastJPEGFactory is Ownable {
     event TokenGraduated(address indexed token);
 
     constructor(address _poolFactory, address _router) Ownable() {
-        poolFactory = IPoolFactory(_poolFactory);
-        router = IRouter(_router);
+        poolFactory = IUniswapV2Factory(_poolFactory);
+        router = IUniswapV2Router02(_router);
         _transferOwnership(msg.sender);
     }
     /**
@@ -273,7 +272,6 @@ contract FastJPEGFactory is Ownable {
         // Add liquidity to Aerodrome
         (,, uint256 liquidity) = router.addLiquidityETH{ value: liquidityEthAfterFee }(
             tokenAddress,
-            false, // volatile pool
             GRADUATE_SUPPLY,
             GRADUATE_SUPPLY, // min token amount
             liquidityEthAfterFee, // min ETH amount
@@ -281,9 +279,9 @@ contract FastJPEGFactory is Ownable {
             block.timestamp + 1800 // 30 minutes deadline
         );
 
-        // Burn the liquidity provider tokens that are returned
-        address wethAddress = address(router.weth());
-        address lpTokenAddress = poolFactory.getPool(tokenAddress, wethAddress, false);
+        // Burn the liquidity provider tokens that are re:turned
+        address wethAddress = address(router.WETH());
+        address lpTokenAddress = poolFactory.getPair(tokenAddress, wethAddress);
         IERC20(lpTokenAddress).approve(address(router), liquidity);
         // THIS DOESNT WORK [FAIL: revert: ERC20: transfer to the zero address] testGraduateToken() (gas: 2061435)
         IERC20(lpTokenAddress).transfer(BURN_ADDRESS, liquidity);
