@@ -13,7 +13,7 @@ contract AnvilFastJPEGFactoryScript is Script, StdCheats {
     address public constant ROUTER = 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24; // uniswap router
     address public constant WETH = 0x4200000000000000000000000000000000000006; // weth
 
-    function setUp() public {
+    function run() public {
         deployCodeTo("UniswapV2Factory.sol:UniswapV2Factory", abi.encode(address(this)), POOL_FACTORY);
 
         deployCodeTo("WETH.sol:WETH", WETH);
