@@ -14,6 +14,8 @@ Install SVM
 
 ```sh
 cargo install svm-rs
+svm install 0.5.16
+svm install 0.6.6
 ```
 
 
