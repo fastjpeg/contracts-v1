@@ -10,6 +10,12 @@ export OPTIMISM_RPC_URL=https://optimism.llamarpc.com
 ```
 
 
+Install SVM
+
+```sh
+cargo install svm-rs
+```
+
 
 
 Foundry consists of:
