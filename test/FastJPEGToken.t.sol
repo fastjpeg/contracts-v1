@@ -45,9 +45,7 @@ contract FastJPEGTokenTest is Test {
         // Test that minting over the cap reverts with ERC20ExceededCap error
         vm.expectRevert(
             abi.encodeWithSelector(
-                ERC20Capped.ERC20ExceededCap.selector,
-                1000000001000000000000000000,
-                1000000000000000000000000000
+                ERC20Capped.ERC20ExceededCap.selector, 1000000001000000000000000000, 1000000000000000000000000000
             )
         );
         // vm.expectRevert("ERC20Capped: cap exceeded");
@@ -57,10 +55,7 @@ contract FastJPEGTokenTest is Test {
     function testBurnOverBalance() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                IERC20Errors.ERC20InsufficientBalance.selector,
-                user1,
-                0,
-                1000000001000000000000000000
+                IERC20Errors.ERC20InsufficientBalance.selector, user1, 0, 1000000001000000000000000000
             )
         );
         fastJpegToken.burn(user1, 1_000_000_001 * 10 ** 18);

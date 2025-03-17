@@ -25,7 +25,7 @@ contract FastJPEGFactoryTest is Test {
     address public feeTo;
 
     function setUp() public {
-         // Initialize test users with different addresses
+        // Initialize test users with different addresses
         fastJpegOwner = address(this);
         user1 = vm.addr(1);
         user2 = vm.addr(2);
@@ -39,7 +39,6 @@ contract FastJPEGFactoryTest is Test {
         // Deploy FastJPEGFactory
         fastJpegFactory = new FastJPEGFactory(address(factory), address(router));
         fastJpegFactory.setFeeTo(feeTo);
-
 
         // Fund the test users with some ETH for transactions
         vm.deal(user1, 100 ether);
