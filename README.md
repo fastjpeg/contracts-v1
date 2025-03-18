@@ -3,20 +3,17 @@
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
 
-
-
-```sh
-export OPTIMISM_RPC_URL=https://optimism.llamarpc.com
-```
-
-
-Install SVM
+### Install SVM
 
 ```sh
+git clone https://github.com/fastjpeg/fastjpeg-contracts
+cd fastjpeg-contracts
 cargo install svm-rs
 svm install 0.5.16
 svm install 0.6.6
 ```
+
+###
 
 
 
