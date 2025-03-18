@@ -14,11 +14,14 @@ contract AnvilFastJPEGFactory is Script, StdCheats {
     address public constant WETH = 0x4200000000000000000000000000000000000006; // weth
 
     function run() public {
+        uint256 deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+        vm.startBroadcast(deployerPrivateKey);
         address feeTo = vm.addr(5);
 
         fastJpegFactory = new FastJPEGFactory(FACTORY, ROUTER, feeTo);
         console.log("Anvil::FastJPEGFactory deployed at", address(fastJpegFactory));
         console.log("Anvil::FeeTo deployed at", feeTo);
+        vm.stopBroadcast();
     }
 
     function test() public {
