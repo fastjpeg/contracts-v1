@@ -22,7 +22,7 @@ contract AnvilFastJPEGFactory is Script, StdCheats {
     }
 
     function test() public {
-                deployCodeTo("UniswapV2Factory.sol:UniswapV2Factory", abi.encode(address(this)), FACTORY);
+        deployCodeTo("UniswapV2Factory.sol:UniswapV2Factory", abi.encode(address(this)), FACTORY);
 
         deployCodeTo("WETH.sol:WETH", WETH);
 
