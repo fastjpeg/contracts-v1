@@ -233,13 +233,25 @@ contract FastJPEGFactoryTest is Test {
     function testNotGraduateToken() public {
         vm.startPrank(user1);
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
-        fastJpegFactory.buy{ value: 10 ether }(tokenAddress);
+        fastJpegFactory.buy{ value: 0.99 ether }(tokenAddress);
         vm.stopPrank();
 
         (,,,,, bool isGraduated) = fastJpegFactory.tokens(tokenAddress);
         // check if token is not graduated
         assertEq(isGraduated, false, "Token should not be graduated");
     }
+    
+    function testGraduateTokenOnTenETH() public {
+        vm.startPrank(user1);
+        address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
+        fastJpegFactory.buy{ value: 10 ether }(tokenAddress);
+        vm.stopPrank();
+
+        (,,,,, bool isGraduated) = fastJpegFactory.tokens(tokenAddress);
+        // check if token is not graduated
+        assertEq(isGraduated, true, "Token should be graduated");
+    }
+
 
     function testGraduateToken() public {
         vm.startPrank(user1);
@@ -270,4 +282,5 @@ contract FastJPEGFactoryTest is Test {
         // - 0.1 ETH is paid to Token Creator (Creator Incentive)
         // - 0.5 ETH is paid to FastJPEGFactory owner (Migration Fee)
     }
+
 }
