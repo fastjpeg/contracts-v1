@@ -7,7 +7,7 @@ import { IERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC
 import { IUniswapV2Factory } from "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import { IUniswapV2Router02 } from "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import { WETH } from "../lib/solmate/src/tokens/WETH.sol";
-import { AnvilFastJPEGFactoryScript } from "../script/AnvilFastJPEGFactory.s.sol";
+import { AnvilFastJPEGFactory } from "../script/AnvilFastJPEGFactory.s.sol";
 
 contract FastJPEGFactoryTest is Test {
     IUniswapV2Factory factory = IUniswapV2Factory(0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6);
@@ -33,12 +33,11 @@ contract FastJPEGFactoryTest is Test {
         user4 = vm.addr(4);
         feeTo = vm.addr(5);
 
-        AnvilFastJPEGFactoryScript script = new AnvilFastJPEGFactoryScript();
-        script.run();
+        AnvilFastJPEGFactory script = new AnvilFastJPEGFactory();
+        script.test();
 
         // Deploy FastJPEGFactory
-        fastJpegFactory = new FastJPEGFactory(address(factory), address(router));
-        fastJpegFactory.setFeeTo(feeTo);
+        fastJpegFactory = new FastJPEGFactory(address(factory), address(router), feeTo);
 
         // Fund the test users with some ETH for transactions
         vm.deal(user1, 100 ether);

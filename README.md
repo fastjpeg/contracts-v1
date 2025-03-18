@@ -15,7 +15,29 @@ svm install 0.6.6
 
 ###
 
+Start chain
 
+```sh
+anvil --chain-id 31337 --fork-url "https://lb.drpc.org/ogrpc?network=base&dkey=AmRKOjzeAU1HukkCkUA3_r8yxoJD_FgR75-snqSgS7QB"
+```
+
+Deploy contract
+
+```sh
+forge script script/AnvilFastJPEGFactory.s.sol:AnvilFastJPEGFactory --rpc-url http://localhost:8545 --broadcast
+```
+
+FastJPEG factory address
+
+```sh
+0x5aAdFB43eF8dAF45DD80F4676345b7676f1D70e3
+```
+
+feeTo
+
+```sh
+0xe1AB8145F7E55DC933d51a18c793F901A3A0b276
+```
 
 Foundry consists of:
 

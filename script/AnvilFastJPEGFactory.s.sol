@@ -5,7 +5,7 @@ import { Script, console } from "forge-std/Script.sol";
 import { FastJPEGFactory } from "../src/FastJPEGFactory.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 
-contract AnvilFastJPEGFactoryScript is Script, StdCheats {
+contract AnvilFastJPEGFactory is Script, StdCheats {
     FastJPEGFactory public fastJpegFactory;
 
     // All con
@@ -14,13 +14,18 @@ contract AnvilFastJPEGFactoryScript is Script, StdCheats {
     address public constant WETH = 0x4200000000000000000000000000000000000006; // weth
 
     function run() public {
-        deployCodeTo("UniswapV2Factory.sol:UniswapV2Factory", abi.encode(address(this)), FACTORY);
+        address feeTo = vm.addr(5);
+
+        fastJpegFactory = new FastJPEGFactory(FACTORY, ROUTER, feeTo);
+        console.log("Anvil::FastJPEGFactory deployed at", address(fastJpegFactory));
+        console.log("Anvil::FeeTo deployed at", feeTo);
+    }
+
+    function test() public {
+                deployCodeTo("UniswapV2Factory.sol:UniswapV2Factory", abi.encode(address(this)), FACTORY);
 
         deployCodeTo("WETH.sol:WETH", WETH);
 
         deployCodeTo("UniswapV2Router02.sol:UniswapV2Router02", abi.encode(FACTORY, WETH), ROUTER);
-
-        // fastJpegFactory = new FastJPEGFactory(FACTORY, ROUTER);
-        // console.log("Anvil::FastJPEGFactory deployed at", address(fastJpegFactory));
     }
 }
