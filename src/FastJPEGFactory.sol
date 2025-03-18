@@ -96,7 +96,7 @@ contract FastJPEGFactory is Ownable {
         if (msg.value > 0) {
             _buy(address(newToken), airdropRecipients);
         }
-
+        
         emit TokenCreated(address(newToken), msg.sender);
         return address(newToken);
     }
@@ -120,6 +120,12 @@ contract FastJPEGFactory is Ownable {
         uint256 refundEth = totalEthRaised - purchaseEthBeforeFee;
 
         uint256 tokensToMint = calculatePurchaseAmount(purchaseEthBeforeFee, tokenInfo.tokensSold);
+        
+        // Check if minting would exceed max supply and cap if necessary
+        if (tokenInfo.tokensSold + tokensToMint > UNDERGRADUATE_SUPPLY) {
+            tokensToMint = UNDERGRADUATE_SUPPLY - tokenInfo.tokensSold;
+        }
+        
         uint256 totalTokensSold = tokenInfo.tokensSold + tokensToMint;
         uint256 airdropTokens = 0;
         uint256 fee = (purchaseEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
@@ -127,11 +133,16 @@ contract FastJPEGFactory is Ownable {
         if (totalTokensSold < UNDERGRADUATE_SUPPLY) {
             uint256 purchaseEth = purchaseEthBeforeFee - fee;
             tokensToMint = calculatePurchaseAmount(purchaseEth, tokenInfo.tokensSold);
+            
+            // Check again after fee calculation
+            if (tokenInfo.tokensSold + tokensToMint > UNDERGRADUATE_SUPPLY) {
+                tokensToMint = UNDERGRADUATE_SUPPLY - tokenInfo.tokensSold;
+            }
         }
 
         if (tokensToMint > 0 && airdropRecipients.length > 0) {
             airdropTokens = Math.min(tokensToMint, AIRDROP_SUPPLY);
-            uint256 tokensPerRecipient = airdropTokens / airdropRecipients.length;
+            uint256 tokensPerRecipient = airdropRecipients.length > 0 ? airdropTokens / airdropRecipients.length : 0;
             tokenInfo.tokensSold += airdropTokens;
 
             for (uint256 i = 0; i < airdropRecipients.length; i++) {
@@ -148,16 +159,18 @@ contract FastJPEGFactory is Ownable {
             tokenInfo.tokensSold += remainingTokens;
         }
 
-        if (totalEthRaised > GRADUATE_ETH) {
-            (bool successBuyer,) = msg.sender.call{ value: refundEth }("");
+        if (totalEthRaised >= GRADUATE_ETH) {
+            (bool successBuyer, ) = msg.sender.call{ value: refundEth }("");
             require(successBuyer, "Failed to send Ether");
             tokenInfo.reserveBalance = GRADUATE_ETH;
             _graduateToken(tokenAddress, fee);
         } else {
-            (bool successFeeTo,) = feeTo.call{ value: fee }("");
+            (bool successFeeTo, ) = feeTo.call{ value: fee }("");
             require(successFeeTo, "Failed to send Ether");
-            tokenInfo.reserveBalance += purchaseEthBeforeFee;
+            tokenInfo.reserveBalance += purchaseEthBeforeFee - fee; // Subtract fee from reserve balance
         }
+
+        emit TokensBought(tokenAddress, msg.sender, tokensToMint, purchaseEthBeforeFee);
     }
 
     /**
@@ -188,15 +201,16 @@ contract FastJPEGFactory is Ownable {
         tokenInfo.reserveBalance -= returnEth;
 
         // Send fee to feeTo
-        (bool successFeeTo,) = feeTo.call{ value: fee }("");
+        (bool successFeeTo, ) = feeTo.call{ value: fee }("");
         require(successFeeTo, "Failed to send Ether");
 
         // Send ETH to seller (after fee)
-        (bool successSeller,) = msg.sender.call{ value: returnEth }("");
+        (bool successSeller, ) = msg.sender.call{ value: returnEth }("");
         require(successSeller, "Failed to send Ether");
 
         // Update total tokens sold
         tokenInfo.tokensSold -= tokenAmount;
+        emit TokensSold(tokenAddress, msg.sender, tokenAmount, returnEth);
     }
 
     /**
@@ -271,10 +285,10 @@ contract FastJPEGFactory is Ownable {
 
         uint256 ownerFee = GRADUATION_FEE + fee;
         // pay feeTo GRADUATION_FEE
-        (bool successFeeTo,) = feeTo.call{ value: ownerFee }("");
+        (bool successFeeTo, ) = feeTo.call{ value: ownerFee }("");
         require(successFeeTo, "Failed to send Ether");
         // pay creator CREATOR_REWARD_FEE
-        (bool successCreator,) = tokenInfo.creator.call{ value: CREATOR_REWARD_FEE }("");
+        (bool successCreator, ) = tokenInfo.creator.call{ value: CREATOR_REWARD_FEE }("");
         require(successCreator, "Failed to send Ether");
         // remaining ETH used for liquidity
         uint256 liquidityEthAfterFee = tokenInfo.reserveBalance - ownerFee - CREATOR_REWARD_FEE;
@@ -296,10 +310,9 @@ contract FastJPEGFactory is Ownable {
         address wethAddress = address(router.WETH());
         address lpTokenAddress = poolFactory.getPair(tokenAddress, wethAddress);
         IERC20(lpTokenAddress).approve(address(router), liquidity);
-        // THIS DOESNT WORK [FAIL: revert: ERC20: transfer to the zero address] testGraduateToken() (gas: 2061435)
         IERC20(lpTokenAddress).transfer(BURN_ADDRESS, liquidity);
 
-        // // Tranfer ownership to null address
+        // Tranfer ownership to null address
         FastJPEGToken(tokenAddress).renounceOwnership();
         emit TokenGraduated(tokenAddress);
     }
@@ -311,5 +324,5 @@ contract FastJPEGFactory is Ownable {
     }
 
     // Function to receive ETH
-    receive() external payable { }
+    receive() external payable {}
 }
