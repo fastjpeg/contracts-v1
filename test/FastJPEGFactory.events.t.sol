@@ -17,11 +17,10 @@ contract FastJPEGFactoryTest is Test {
     string public tokenName = "Fast JPEG Token";
     string public tokenSymbol = "FJPG";
 
-
     address public EXPECT_TOKEN_ADDRESS = 0xffD4505B3452Dc22f8473616d50503bA9E1710Ac;
     uint256 EXPECT_ONE_ETH_TOKEN_AMOUNT = 251_714_123.560836371277948843 ether;
     address public EXPECT_AIRDROP_TOKEN_ADDRESS = 0x8d2C17FAd02B7bb64139109c6533b7C2b9CADb81;
-    uint256 EXPECT_AIRDROP_TOKEN_AMOUNT = 80_000_000.000000000000000000 ether;
+    uint256 EXPECT_AIRDROP_TOKEN_AMOUNT = 80_000_000.0 ether;
     // Test users
     address public fastJpegOwner;
     address public user1;
@@ -30,7 +29,7 @@ contract FastJPEGFactoryTest is Test {
     address public user4;
     address public feeTo;
 
-       // Events
+    // Events
     event TokenCreated(address indexed token, address indexed creator);
     event TokensBought(address indexed token, address indexed buyer, uint256 amount, uint256 ethSpent);
     event TokensSold(address indexed token, address indexed seller, uint256 amount, uint256 ethReceived);
@@ -62,53 +61,53 @@ contract FastJPEGFactoryTest is Test {
 
     function test_TokenCreated_Event() public {
         vm.startPrank(user1);
-        
+
         // Expect TokenCreated event
         vm.expectEmit(true, true, false, false);
         emit TokenCreated(EXPECT_TOKEN_ADDRESS, user1); // address(0) is a placeholder
         fastJpegFactory.createToken(tokenName, tokenSymbol);
-        
+
         vm.stopPrank();
     }
 
     function test_TokensBought_Event() public {
         vm.startPrank(user1);
-        
+
         // Create token first
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
-        
+
         // Expect TokensBought event
         vm.expectEmit(true, true, false, false);
         emit TokensBought(tokenAddress, user1, EXPECT_ONE_ETH_TOKEN_AMOUNT, 1 ether); // Amount will be calculated by contract
-        fastJpegFactory.buy{value: 1 ether}(tokenAddress);
-        
+        fastJpegFactory.buy{ value: 1 ether }(tokenAddress);
+
         vm.stopPrank();
     }
 
     function test_TokensSold_Event() public {
         vm.startPrank(user1);
-        
+
         // Create and buy tokens first
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
-        fastJpegFactory.buy{value: 1 ether}(tokenAddress);
-        
+        fastJpegFactory.buy{ value: 1 ether }(tokenAddress);
+
         // Get token instance
         FastJPEGToken token = FastJPEGToken(tokenAddress);
-        
+
         // Approve factory to sell tokens
         token.approve(address(fastJpegFactory), token.balanceOf(user1));
-        
+
         // Expect TokensSold event
         vm.expectEmit(true, true, false, false);
-        emit TokensSold(tokenAddress, user1, token.balanceOf(user1), 0.980100000000000000 ether); // ETH amount will be calculated by contract
+        emit TokensSold(tokenAddress, user1, token.balanceOf(user1), 0.9801 ether); // ETH amount will be calculated by contract
         fastJpegFactory.sell(tokenAddress, token.balanceOf(user1));
-        
+
         vm.stopPrank();
     }
 
     function test_AirdropIssued_Event() public {
         vm.startPrank(user1);
-        
+
         // Create array of recipients
         address[] memory recipients = new address[](2);
         recipients[0] = user2;
@@ -116,56 +115,53 @@ contract FastJPEGFactoryTest is Test {
 
         // Verify AirdropIssued events for each recipient
         vm.expectEmit(true, true, false, false);
-        emit AirdropIssued(EXPECT_TOKEN_ADDRESS, user2,EXPECT_AIRDROP_TOKEN_AMOUNT); // Amount will be calculated by contract
-        
+        emit AirdropIssued(EXPECT_TOKEN_ADDRESS, user2, EXPECT_AIRDROP_TOKEN_AMOUNT); // Amount will be calculated by contract
+
         vm.expectEmit(true, true, false, false);
-        emit AirdropIssued(EXPECT_TOKEN_ADDRESS, user3,EXPECT_AIRDROP_TOKEN_AMOUNT); // Amount will be calculated by contract
+        emit AirdropIssued(EXPECT_TOKEN_ADDRESS, user3, EXPECT_AIRDROP_TOKEN_AMOUNT); // Amount will be calculated by contract
 
         // Create token with airdrop
-        fastJpegFactory.createTokenAirdrop{value: 2 ether}(tokenName, tokenSymbol, recipients);
-        
+        fastJpegFactory.createTokenAirdrop{ value: 2 ether }(tokenName, tokenSymbol, recipients);
+
         vm.stopPrank();
     }
 
     function test_TokenGraduated_Event() public {
         vm.startPrank(user1);
-        
+
         // Create token
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
-        
-                // Expect TokenGraduated event
+
+        // Expect TokenGraduated event
         vm.expectEmit(true, false, false, false);
         emit TokenGraduated(EXPECT_TOKEN_ADDRESS);
 
         // Buy enough tokens to trigger graduation (10 ETH)
-        fastJpegFactory.buy{value: 10 ether}(tokenAddress);
-        
+        fastJpegFactory.buy{ value: 10 ether }(tokenAddress);
+
         vm.stopPrank();
     }
 
     function test_AllEventsInSequence() public {
-
-   
         vm.startPrank(user1);
-        
+
         // 1. Create token
         vm.expectEmit(true, true, false, false);
         emit TokenCreated(EXPECT_TOKEN_ADDRESS, user1);
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
-        
+
         // 2. Buy tokens
         vm.expectEmit(true, true, false, false);
         emit TokensBought(tokenAddress, user1, EXPECT_ONE_ETH_TOKEN_AMOUNT, 1 ether);
-        fastJpegFactory.buy{value: 1 ether}(tokenAddress);
-        
+        fastJpegFactory.buy{ value: 1 ether }(tokenAddress);
+
         // 3. Sell tokens
         FastJPEGToken token = FastJPEGToken(tokenAddress);
         token.approve(address(fastJpegFactory), token.balanceOf(user1));
         vm.expectEmit(true, true, false, false);
-        emit TokensSold(tokenAddress, user1, token.balanceOf(user1), 0.980100000000000000 ether);
+        emit TokensSold(tokenAddress, user1, token.balanceOf(user1), 0.9801 ether);
         fastJpegFactory.sell(tokenAddress, token.balanceOf(user1));
 
-        
         // 4. Create token with airdrop
         address[] memory recipients = new address[](2);
         recipients[0] = user2;
@@ -174,16 +170,15 @@ contract FastJPEGFactoryTest is Test {
         emit AirdropIssued(EXPECT_AIRDROP_TOKEN_ADDRESS, user2, EXPECT_AIRDROP_TOKEN_AMOUNT);
         vm.expectEmit(true, true, false, false);
         emit AirdropIssued(EXPECT_AIRDROP_TOKEN_ADDRESS, user3, EXPECT_AIRDROP_TOKEN_AMOUNT);
-        fastJpegFactory.createTokenAirdrop{value: 2 ether}(tokenName, tokenSymbol, recipients);
-        
+        fastJpegFactory.createTokenAirdrop{ value: 2 ether }(tokenName, tokenSymbol, recipients);
+
         // 5. Graduate token
 
         vm.expectEmit(true, false, false, false);
         emit TokenGraduated(EXPECT_AIRDROP_TOKEN_ADDRESS);
 
-        fastJpegFactory.buy{value: 10 ether}(EXPECT_AIRDROP_TOKEN_ADDRESS);
+        fastJpegFactory.buy{ value: 10 ether }(EXPECT_AIRDROP_TOKEN_ADDRESS);
 
-        
         vm.stopPrank();
     }
 }

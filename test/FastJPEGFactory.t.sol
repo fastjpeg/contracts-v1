@@ -240,7 +240,7 @@ contract FastJPEGFactoryTest is Test {
         // check if token is not graduated
         assertEq(isGraduated, false, "Token should not be graduated");
     }
-    
+
     function testGraduateTokenOnTenETH() public {
         vm.startPrank(user1);
         address tokenAddress = fastJpegFactory.createToken(tokenName, tokenSymbol);
@@ -251,7 +251,6 @@ contract FastJPEGFactoryTest is Test {
         // check if token is not graduated
         assertEq(isGraduated, true, "Token should be graduated");
     }
-
 
     function testGraduateToken() public {
         vm.startPrank(user1);
@@ -282,5 +281,4 @@ contract FastJPEGFactoryTest is Test {
         // - 0.1 ETH is paid to Token Creator (Creator Incentive)
         // - 0.5 ETH is paid to FastJPEGFactory owner (Migration Fee)
     }
-
 }
