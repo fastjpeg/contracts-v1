@@ -184,7 +184,6 @@ contract FastJPEGFactory is Ownable {
         require(coinAmount > 0, "Amount must be positive");
         require(FJC(coinAddress).balanceOf(msg.sender) >= coinAmount, "Insufficient balance");
 
-
         uint256 currentSupply = FJC(coinAddress).totalSupply();
 
         // Calculate ETH to return based on the bonding curve
