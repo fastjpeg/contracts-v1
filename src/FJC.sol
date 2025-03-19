@@ -6,7 +6,7 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Capped.sol";
 
-contract FastJPEGToken is ERC20, Ownable, ERC20Capped {
+contract FJC is ERC20, Ownable, ERC20Capped {
     constructor(string memory name, string memory symbol)
         ERC20(name, symbol)
         ERC20Capped(1_000_000_000 * 1e18)
