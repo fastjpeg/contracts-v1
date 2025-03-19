@@ -116,11 +116,12 @@ contract FastJPEGFactory is Ownable {
         require(coinInfo.coinsSold < UNDERGRADUATE_SUPPLY, "Max supply reached");
 
         uint256 totalEthRaised = coinInfo.ethReserve + msg.value;
-        uint256 purchaseEthBeforeFee = Math.min(totalEthRaised, GRADUATE_ETH);
+        uint256 purchaseEthBeforeFee = Math.min(msg.value, GRADUATE_ETH);
         uint256 refundEth = totalEthRaised - purchaseEthBeforeFee;
 
         uint256 coinsToMint = calculatePurchaseAmount(purchaseEthBeforeFee, coinInfo.coinsSold);
 
+        console.log("coinsToMint", coinsToMint);
         // Check if minting would exceed max supply and cap if necessary
         if (coinInfo.coinsSold + coinsToMint > UNDERGRADUATE_SUPPLY) {
             coinsToMint = UNDERGRADUATE_SUPPLY - coinInfo.coinsSold;
