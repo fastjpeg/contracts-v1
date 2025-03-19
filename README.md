@@ -30,7 +30,7 @@ forge script script/AnvilFastJPEGFactory.s.sol:AnvilFastJPEGFactory --rpc-url ht
 FastJPEG factory address
 
 ```sh
-0xb6aA91E8904d691a10372706e57aE1b390D26353
+0x4f1F87d512650f32bf9949C4c5Ef37a3cc891C6D
 ```
 
 feeTo
