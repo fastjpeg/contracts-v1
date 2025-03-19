@@ -92,9 +92,7 @@ contract FastJPEGFactoryTest is Test {
         FJC coin = FJC(coinAddress);
 
         assertEq(
-            coin.balanceOf(user1),
-            355977527380591821538147077,
-            "User should have 355977527380591821538147077 FJPGCoins"
+            coin.balanceOf(user1), 355977527380591821538147077, "User should have 355977527380591821538147077 FJPGCoins"
         );
         assertEq(coin.balanceOf(owner), 0, "Owner should have 0 FJPGCoins");
         assertEq(address(factory).balance, 1.98 ether, "Factory should have 1.98 ether");
@@ -112,16 +110,10 @@ contract FastJPEGFactoryTest is Test {
         FJC coin = FJC(coinAddress);
 
         assertEq(
-            coin.balanceOf(user1),
-            255977527380591821538147077,
-            "User should have 255977527380591821538147077 FJPGCoins"
+            coin.balanceOf(user1), 255977527380591821538147077, "User should have 255977527380591821538147077 FJPGCoins"
         );
         assertEq(coin.balanceOf(owner), 0, "Owner should have 0 FJPGCoins");
-        assertEq(
-            address(factory).balance,
-            1.023820226935650558 ether,
-            "Factory should have 1.023820226935650558 ether"
-        );
+        assertEq(address(factory).balance, 1.023820226935650558 ether, "Factory should have 1.023820226935650558 ether");
         assertEq(coin.balanceOf(feeTo), 0, "Fee recipient should have 0 FJPGCoins");
         assertEq(feeTo.balance, 0.029561797730643494 ether, "Fee recipient should have  0.029561797730643494 ether");
     }
@@ -189,15 +181,12 @@ contract FastJPEGFactoryTest is Test {
         airdropRecipients[3] = user4;
 
         vm.startPrank(user1);
-        address coinAddress =
-            factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, airdropRecipients);
+        address coinAddress = factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, airdropRecipients);
         vm.stopPrank();
 
         // Check token balance
         assertEq(
-            FJC(coinAddress).balanceOf(user1),
-            235_977_527.380591821538147077 ether,
-            "User1 should receive 40m tokens"
+            FJC(coinAddress).balanceOf(user1), 235_977_527.380591821538147077 ether, "User1 should receive 40m tokens"
         );
         assertEq(FJC(coinAddress).balanceOf(user2), 40_000_000 ether, "User2 should receive 40m tokens");
         assertEq(FJC(coinAddress).balanceOf(user3), 40_000_000 ether, "User3 should receive 40m tokens");
@@ -266,9 +255,7 @@ contract FastJPEGFactoryTest is Test {
         address wethAddress = address(uniswapV2Router.WETH());
         address lpTokenAddress = uniswapV2Factory.getPair(coinAddress, wethAddress);
         assertEq(
-            IERC20(lpTokenAddress).balanceOf(address(factory)),
-            0,
-            "LP tokens should not be owned by factory address"
+            IERC20(lpTokenAddress).balanceOf(address(factory)), 0, "LP tokens should not be owned by factory address"
         );
         assertEq(
             IERC20(lpTokenAddress).balanceOf(address(0x000000000000000000000000000000000000dEaD)),
