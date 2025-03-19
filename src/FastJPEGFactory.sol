@@ -121,7 +121,6 @@ contract FastJPEGFactory is Ownable {
 
         uint256 coinsToMint = calculatePurchaseAmount(purchaseEthBeforeFee, coinInfo.coinsSold);
 
-        console.log("coinsToMint", coinsToMint);
         // Check if minting would exceed max supply and cap if necessary
         if (coinInfo.coinsSold + coinsToMint > UNDERGRADUATE_SUPPLY) {
             coinsToMint = UNDERGRADUATE_SUPPLY - coinInfo.coinsSold;
