@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { console } from "forge-std/console.sol";
-import { FastJPEGToken } from "./FastJPEGToken.sol";
+import { FJC } from "./FJC.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
@@ -11,16 +11,16 @@ import "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 contract FastJPEGFactory is Ownable {
     address public constant BURN_ADDRESS = address(0x000000000000000000000000000000000000dEaD);
-    uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 1e18; // 800M tokens with 18 decimals
-    uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 1e18; // 200M tokens with 18 decimals
-    uint256 public constant AIRDROP_SUPPLY = 160_000_000 * 1e18; // 160 million tokens
+    uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 1e18; // 800M coins with 18 decimals
+    uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 1e18; // 200M coins with 18 decimals
+    uint256 public constant AIRDROP_SUPPLY = 160_000_000 * 1e18; // 160 million coins
 
-    uint256 public constant GRADUATE_ETH = 10 ether; // 10 ETH to graduate token
+    uint256 public constant GRADUATE_ETH = 10 ether; // 10 ETH to graduate coin
 
     uint256 public constant UNDERGRADUATE_FEE_BPS = 100; // 1% fee
     uint256 public constant BPS_DENOMINATOR = 10000; // 100% = 10000 BPS
 
-    uint256 public constant GRADUATION_FEE = 0.5 ether; // 0.5 ETH to graduate token
+    uint256 public constant GRADUATION_FEE = 0.5 ether; // 0.5 ETH to graduate coin
     uint256 public constant CREATOR_REWARD_FEE = 0.1 ether; // 0.1 ETH to creator
 
     uint256 public constant AIRDROP_ETH = 2 ether; // 2 ETH to airdrop
@@ -33,23 +33,23 @@ contract FastJPEGFactory is Ownable {
     IUniswapV2Router02 public immutable router;
 
     // State variables
-    struct TokenInfo {
-        address tokenAddress;
+    struct CoinInfo {
+        address coinAddress;
         address creator;
         address poolAddress;
-        uint256 reserveBalance;
-        uint256 tokensSold;
+        uint256 ethReserve;
+        uint256 coinsSold;
         bool isGraduated;
     }
 
-    mapping(address => TokenInfo) public tokens;
+    mapping(address => CoinInfo) public coins;
 
     // Events
-    event TokenCreated(address indexed token, address indexed creator);
-    event TokensBought(address indexed token, address indexed buyer, uint256 amount, uint256 ethSpent);
-    event TokensSold(address indexed token, address indexed seller, uint256 amount, uint256 ethReceived);
-    event AirdropIssued(address indexed token, address indexed recipient, uint256 amount);
-    event TokenGraduated(address indexed token);
+    event NewCoin(address indexed coin, address indexed creator);
+    event BuyCoin(address indexed coin, address indexed buyer, uint256 amount, uint256 ethSpent);
+    event SellCoin(address indexed coin, address indexed seller, uint256 amount, uint256 ethReceived);
+    event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
+    event GraduateCoin(address indexed coin);
 
     constructor(address _poolFactory, address _router, address _feeTo) Ownable(msg.sender) {
         poolFactory = IUniswapV2Factory(_poolFactory);
@@ -62,143 +62,144 @@ contract FastJPEGFactory is Ownable {
     }
 
     /**
-     * @dev Launches a new token with the specified name and symbol without airdrop recipients
-     * @param name The name of the token
-     * @param symbol The symbol of the token
+     * @dev Launches a new coin with the specified name and symbol without airdrop recipients
+     * @param name The name of the coin
+     * @param symbol The symbol of the coin
      */
-    function createToken(string memory name, string memory symbol) public payable returns (address) {
+    function newCoin(string memory name, string memory symbol) public payable returns (address) {
         address[] memory emptyRecipients = new address[](0);
-        return createTokenAirdrop(name, symbol, emptyRecipients);
+        return newCoinAirdrop(name, symbol, emptyRecipients);
     }
 
     /**
-     * @dev Launches a new token with the specified name and symbol
-     * @param name The name of the token
-     * @param symbol The symbol of the token
-     * @param airdropRecipients Optional array of addresses to airdrop tokens to (if msg.value >= 2 ETH)
+     * @dev Launches a new coin with the specified name and symbol
+     * @param name The name of the coin
+     * @param symbol The symbol of the coin
+     * @param airdropRecipients Optional array of addresses to airdrop coins to (if msg.value >= 2 ETH)
      */
-    function createTokenAirdrop(string memory name, string memory symbol, address[] memory airdropRecipients)
+    function newCoinAirdrop(string memory name, string memory symbol, address[] memory airdropRecipients)
         public
         payable
         returns (address)
     {
-        // Deploy new token - only mint bonding supply to contract initially
-        FastJPEGToken newToken = new FastJPEGToken(name, symbol);
+        // Deploy new coin - only mint bonding supply to contract initially
+        FJC coin = new FJC(name, symbol);
 
-        // Initialize token info
-        TokenInfo storage tokenInfo = tokens[address(newToken)];
-        tokenInfo.tokenAddress = address(newToken);
-        tokenInfo.creator = msg.sender;
-        tokenInfo.reserveBalance = 0;
-        tokenInfo.tokensSold = 0;
-        tokenInfo.isGraduated = false;
+        // Initialize coin info
+        CoinInfo storage coinInfo = coins[address(coin)];
+        coinInfo.coinAddress = address(coin);
+        coinInfo.creator = msg.sender;
+        coinInfo.ethReserve = 0;
+        coinInfo.coinsSold = 0;
+        coinInfo.isGraduated = false;
 
         if (msg.value > 0) {
-            _buy(address(newToken), airdropRecipients);
+            _buy(address(coin), airdropRecipients);
         }
 
-        emit TokenCreated(address(newToken), msg.sender);
-        return address(newToken);
+        emit NewCoin(address(coin), msg.sender);
+        return address(coin);
     }
 
-    function buy(address tokenAddress) external payable {
+    function buy(address coinAddress) external payable {
         address[] memory emptyRecipients = new address[](0);
-        _buy(tokenAddress, emptyRecipients);
+        _buy(coinAddress, emptyRecipients);
     }
 
     /**
-     * @dev Buy tokens using ETH
+     * @dev Buy coins using ETH
      */
-    function _buy(address tokenAddress, address[] memory airdropRecipients) internal {
-        TokenInfo storage tokenInfo = _tokenInfo(tokenAddress);
-        require(!tokenInfo.isGraduated, "Token been graduated, buys disabled");
+    function _buy(address coinAddress, address[] memory airdropRecipients) internal {
+        CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
+        require(!coinInfo.isGraduated, "Coin been graduated, buys disabled");
         require(msg.value > 0, "Must send ETH");
-        require(tokenInfo.tokensSold < UNDERGRADUATE_SUPPLY, "Max supply reached");
+        require(coinInfo.coinsSold < UNDERGRADUATE_SUPPLY, "Max supply reached");
 
-        uint256 totalEthRaised = tokenInfo.reserveBalance + msg.value;
+        uint256 totalEthRaised = coinInfo.ethReserve + msg.value;
         uint256 purchaseEthBeforeFee = Math.min(totalEthRaised, GRADUATE_ETH);
         uint256 refundEth = totalEthRaised - purchaseEthBeforeFee;
 
-        uint256 tokensToMint = calculatePurchaseAmount(purchaseEthBeforeFee, tokenInfo.tokensSold);
+        uint256 coinsToMint = calculatePurchaseAmount(purchaseEthBeforeFee, coinInfo.coinsSold);
 
         // Check if minting would exceed max supply and cap if necessary
-        if (tokenInfo.tokensSold + tokensToMint > UNDERGRADUATE_SUPPLY) {
-            tokensToMint = UNDERGRADUATE_SUPPLY - tokenInfo.tokensSold;
+        if (coinInfo.coinsSold + coinsToMint > UNDERGRADUATE_SUPPLY) {
+            coinsToMint = UNDERGRADUATE_SUPPLY - coinInfo.coinsSold;
         }
 
-        uint256 totalTokensSold = tokenInfo.tokensSold + tokensToMint;
-        uint256 airdropTokens = 0;
+        uint256 totalCoins = coinInfo.coinsSold + coinsToMint;
+        uint256 airdropCoins = 0;
         uint256 fee = (purchaseEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
 
-        if (totalTokensSold < UNDERGRADUATE_SUPPLY) {
+        if (totalCoins < UNDERGRADUATE_SUPPLY) {
             uint256 purchaseEth = purchaseEthBeforeFee - fee;
-            tokensToMint = calculatePurchaseAmount(purchaseEth, tokenInfo.tokensSold);
+            coinsToMint = calculatePurchaseAmount(purchaseEth, coinInfo.coinsSold);
 
             // Check again after fee calculation
-            if (tokenInfo.tokensSold + tokensToMint > UNDERGRADUATE_SUPPLY) {
-                tokensToMint = UNDERGRADUATE_SUPPLY - tokenInfo.tokensSold;
+            if (coinInfo.coinsSold + coinsToMint > UNDERGRADUATE_SUPPLY) {
+                coinsToMint = UNDERGRADUATE_SUPPLY - coinInfo.coinsSold;
             }
         }
 
-        if (tokensToMint > 0 && airdropRecipients.length > 0) {
-            airdropTokens = Math.min(tokensToMint, AIRDROP_SUPPLY);
-            uint256 tokensPerRecipient = airdropRecipients.length > 0 ? airdropTokens / airdropRecipients.length : 0;
-            tokenInfo.tokensSold += airdropTokens;
+        if (coinsToMint > 0 && airdropRecipients.length > 0) {
+            airdropCoins = Math.min(coinsToMint, AIRDROP_SUPPLY);
+            uint256 coinsPerRecipient = airdropRecipients.length > 0 ? airdropCoins / airdropRecipients.length : 0;
+            coinInfo.coinsSold += airdropCoins;
 
             for (uint256 i = 0; i < airdropRecipients.length; i++) {
                 require(airdropRecipients[i] != address(0), "Invalid recipient address");
-                FastJPEGToken(tokenAddress).mint(airdropRecipients[i], tokensPerRecipient);
-                emit AirdropIssued(tokenAddress, airdropRecipients[i], tokensPerRecipient);
+                FJC(coinAddress).mint(airdropRecipients[i], coinsPerRecipient);
+                emit AirdropCoin(coinAddress, airdropRecipients[i], coinsPerRecipient);
             }
         }
 
-        uint256 remainingTokens = tokensToMint - airdropTokens;
+        uint256 remainingCoins = coinsToMint - airdropCoins;
 
-        if (remainingTokens > 0) {
-            FastJPEGToken(tokenAddress).mint(msg.sender, remainingTokens);
-            tokenInfo.tokensSold += remainingTokens;
+        if (remainingCoins > 0) {
+            FJC(coinAddress).mint(msg.sender, remainingCoins);
+            coinInfo.coinsSold += remainingCoins;
         }
 
         if (totalEthRaised >= GRADUATE_ETH) {
             (bool successBuyer,) = msg.sender.call{ value: refundEth }("");
             require(successBuyer, "Failed to send Ether");
-            tokenInfo.reserveBalance = GRADUATE_ETH;
-            _graduateToken(tokenAddress, fee);
+            coinInfo.ethReserve = GRADUATE_ETH;
+            _graduateCoin(coinAddress, fee);
         } else {
             (bool successFeeTo,) = feeTo.call{ value: fee }("");
             require(successFeeTo, "Failed to send Ether");
-            tokenInfo.reserveBalance += purchaseEthBeforeFee - fee; // Subtract fee from reserve balance
+            coinInfo.ethReserve += purchaseEthBeforeFee - fee; // Subtract fee from reserve balance
         }
 
-        emit TokensBought(tokenAddress, msg.sender, tokensToMint, purchaseEthBeforeFee);
+        emit BuyCoin(coinAddress, msg.sender, coinsToMint, purchaseEthBeforeFee);
     }
 
     /**
-     * @dev Sell tokens to get ETH back
-     * @param tokenAmount Amount of tokens to sell
+     * @dev Sell coins to get ETH back
+     * @param coinAmount Amount of coins to sell
      */
-    function sell(address tokenAddress, uint256 tokenAmount) external {
-        TokenInfo storage tokenInfo = _tokenInfo(tokenAddress);
-        require(!tokenInfo.isGraduated, "Token graduated, sells disabled");
-        require(tokenAmount > 0, "Amount must be positive");
-        require(FastJPEGToken(tokenAddress).balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
+    function sell(address coinAddress, uint256 coinAmount) external {
+        CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
+        require(!coinInfo.isGraduated, "Coin graduated, sells disabled");
+        require(coinAmount > 0, "Amount must be positive");
+        require(FJC(coinAddress).balanceOf(msg.sender) >= coinAmount, "Insufficient balance");
 
-        uint256 currentSupply = FastJPEGToken(tokenAddress).totalSupply();
+
+        uint256 currentSupply = FJC(coinAddress).totalSupply();
 
         // Calculate ETH to return based on the bonding curve
-        uint256 returnEthBeforeFee = calculateSaleReturn(tokenAmount, currentSupply);
+        uint256 returnEthBeforeFee = calculateSaleReturn(coinAmount, currentSupply);
 
         // Calculate 1% fee
         uint256 fee = (returnEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
         uint256 returnEth = returnEthBeforeFee - fee;
 
-        require(returnEth <= tokenInfo.reserveBalance, "Insufficient reserve");
+        require(returnEth <= coinInfo.ethReserve, "Insufficient reserve");
 
-        // Burn tokens
-        FastJPEGToken(tokenAddress).burn(msg.sender, tokenAmount);
+        // Burn coins
+        FJC(coinAddress).burn(msg.sender, coinAmount);
 
         // Update reserve balance
-        tokenInfo.reserveBalance -= returnEth;
+        coinInfo.ethReserve -= returnEth;
 
         // Send fee to feeTo
         (bool successFeeTo,) = feeTo.call{ value: fee }("");
@@ -208,16 +209,16 @@ contract FastJPEGFactory is Ownable {
         (bool successSeller,) = msg.sender.call{ value: returnEth }("");
         require(successSeller, "Failed to send Ether");
 
-        // Update total tokens sold
-        tokenInfo.tokensSold -= tokenAmount;
-        emit TokensSold(tokenAddress, msg.sender, tokenAmount, returnEth);
+        // Update total coins sold
+        coinInfo.coinsSold -= coinAmount;
+        emit SellCoin(coinAddress, msg.sender, coinAmount, returnEth);
     }
 
     /**
-     * @dev Calculate how many tokens to mint for a given ETH amount
+     * @dev Calculate how many coins to mint for a given ETH amount
      * @param ethAmount Amount of ETH sent
      * @param currentSupply Current total supply
-     * @return Amount of tokens to mint
+     * @return Amount of coins to mint
      */
     function calculatePurchaseAmount(uint256 ethAmount, uint256 currentSupply) public pure returns (uint256) {
         // For a quadratic curve: T = sqrt((E * UNDERGRADUATE_SUPPLY²) / GRADUATE_ETH + currentSupply²) - currentSupply
@@ -231,21 +232,21 @@ contract FastJPEGFactory is Ownable {
         uint256 sumUnderRoot = term1 + term2;
 
         // Take square root and subtract currentSupply
-        uint256 newTotalSupply = Math.sqrt(sumUnderRoot);
+        uint256 newCoinSupply = Math.sqrt(sumUnderRoot);
 
-        return newTotalSupply > currentSupply ? newTotalSupply - currentSupply : 0;
+        return newCoinSupply > currentSupply ? newCoinSupply - currentSupply : 0;
     }
 
     /**
-     * @dev Calculate how much ETH is needed to purchase a specific token amount
-     * @param tokenAmount Amount of tokens to purchase
+     * @dev Calculate how much ETH is needed to purchase a specific coin amount
+     * @param coinAmount Amount of coins to purchase
      * @param currentSupply Current total supply
      * @return Amount of ETH needed
      */
-    function calculatePriceForTokens(uint256 tokenAmount, uint256 currentSupply) public pure returns (uint256) {
+    function calculatePriceForCoins(uint256 coinAmount, uint256 currentSupply) public pure returns (uint256) {
         // For a quadratic curve: E = (GRADUATE_ETH * ((currentSupply + T)² - currentSupply²)) / UNDERGRADUATE_SUPPLY²
 
-        uint256 newSupply = currentSupply + tokenAmount;
+        uint256 newSupply = currentSupply + coinAmount;
 
         // Calculate: (currentSupply + T)² - currentSupply²
         uint256 newSupplySquared = newSupply ** 2;
@@ -260,67 +261,67 @@ contract FastJPEGFactory is Ownable {
     }
 
     /**
-     * @dev Calculate how much ETH to return when selling tokens
-     * @param tokenAmount Amount of tokens to sell
+     * @dev Calculate how much ETH to return when selling coins
+     * @param coinAmount Amount of coins to sell
      * @param currentSupply Current total supply
      * @return Amount of ETH to return
      */
-    function calculateSaleReturn(uint256 tokenAmount, uint256 currentSupply) public pure returns (uint256) {
-        // Uses the same formula as calculatePriceForTokens but in reverse
-        return calculatePriceForTokens(tokenAmount, currentSupply - tokenAmount);
+    function calculateSaleReturn(uint256 coinAmount, uint256 currentSupply) public pure returns (uint256) {
+        // Uses the same formula as calculatePriceForCoins but in reverse
+        return calculatePriceForCoins(coinAmount, currentSupply - coinAmount);
     }
 
     /**
-     * @dev Internal function to graduate a token to Aerodrome
-     * @param tokenAddress The address of the token to graduate
-     * @param fee The amount of ETH to graduate the token
+     * @dev Internal function to graduate a coin to Aerodrome
+     * @param coinAddress The address of the coin to graduate
+     * @param fee The amount of ETH to graduate the coin
      */
-    function _graduateToken(address tokenAddress, uint256 fee) internal {
-        TokenInfo storage tokenInfo = tokens[tokenAddress];
-        require(!tokenInfo.isGraduated, "Token already graduated");
-        tokenInfo.isGraduated = true;
+    function _graduateCoin(address coinAddress, uint256 fee) internal {
+        CoinInfo storage coinInfo = coins[coinAddress];
+        require(!coinInfo.isGraduated, "Coin already graduated");
+        coinInfo.isGraduated = true;
 
         //mint graduation supply factory
-        FastJPEGToken(tokenAddress).mint(address(this), GRADUATE_SUPPLY);
+        FJC(coinAddress).mint(address(this), GRADUATE_SUPPLY);
 
         uint256 ownerFee = GRADUATION_FEE + fee;
         // pay feeTo GRADUATION_FEE
         (bool successFeeTo,) = feeTo.call{ value: ownerFee }("");
         require(successFeeTo, "Failed to send Ether");
         // pay creator CREATOR_REWARD_FEE
-        (bool successCreator,) = tokenInfo.creator.call{ value: CREATOR_REWARD_FEE }("");
+        (bool successCreator,) = coinInfo.creator.call{ value: CREATOR_REWARD_FEE }("");
         require(successCreator, "Failed to send Ether");
         // remaining ETH used for liquidity
-        uint256 liquidityEthAfterFee = tokenInfo.reserveBalance - ownerFee - CREATOR_REWARD_FEE;
+        uint256 liquidityEthAfterFee = coinInfo.ethReserve - ownerFee - CREATOR_REWARD_FEE;
 
-        // Allow dex to reach in and pull tokens
-        FastJPEGToken(tokenAddress).approve(address(router), GRADUATE_SUPPLY);
+        // Allow dex to reach in and pull coins
+        FJC(coinAddress).approve(address(router), GRADUATE_SUPPLY);
 
         // Add liquidity to Aerodrome
         (,, uint256 liquidity) = router.addLiquidityETH{ value: liquidityEthAfterFee }(
-            tokenAddress,
+            coinAddress,
             GRADUATE_SUPPLY,
-            GRADUATE_SUPPLY, // min token amount
+            GRADUATE_SUPPLY, // min coin amount
             liquidityEthAfterFee, // min ETH amount
-            address(this), // recipient of the liquidity tokens.
+            address(this), // recipient of the liquidity coins.
             block.timestamp + 1800 // 30 minutes deadline
         );
 
-        // Burn the liquidity provider tokens that are re:turned
+        // Burn the liquidity provider coins that are returned
         address wethAddress = address(router.WETH());
-        address lpTokenAddress = poolFactory.getPair(tokenAddress, wethAddress);
-        IERC20(lpTokenAddress).approve(address(router), liquidity);
-        IERC20(lpTokenAddress).transfer(BURN_ADDRESS, liquidity);
+        address lpCoinAddress = poolFactory.getPair(coinAddress, wethAddress);
+        IERC20(lpCoinAddress).approve(address(router), liquidity);
+        IERC20(lpCoinAddress).transfer(BURN_ADDRESS, liquidity);
 
         // Tranfer ownership to null address
-        FastJPEGToken(tokenAddress).renounceOwnership();
-        emit TokenGraduated(tokenAddress);
+        FJC(coinAddress).renounceOwnership();
+        emit GraduateCoin(coinAddress);
     }
 
-    function _tokenInfo(address tokenAddress) internal view returns (TokenInfo storage) {
-        TokenInfo storage tokenInfo = tokens[tokenAddress];
-        require(tokenInfo.tokenAddress != address(0), "Token not found");
-        return tokenInfo;
+    function _getCoinInfo(address coinAddress) internal view returns (CoinInfo storage) {
+        CoinInfo storage coinInfo = coins[coinAddress];
+        require(coinInfo.coinAddress != address(0), "Coin not found");
+        return coinInfo;
     }
 
     // Function to receive ETH
