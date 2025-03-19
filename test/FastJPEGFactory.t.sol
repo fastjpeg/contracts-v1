@@ -281,4 +281,22 @@ contract FastJPEGFactoryTest is Test {
         // - 0.1 ETH is paid to Token Creator (Creator Incentive)
         // - 0.5 ETH is paid to FastJPEGFactory owner (Migration Fee)
     }
+
+    function test_consecutiveBuys() public {
+        vm.startPrank(user1);
+        address coinAddress = factory.newCoin(coinName, coinSymbol);
+        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
+        vm.stopPrank();
+
+        assertEq(FJC(coinAddress).balanceOf(user1), 795_989_949.685295963787583854 ether, "User1 should have 795_989_949 ether"); // 357_770_876
+    }
 }
