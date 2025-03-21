@@ -13,7 +13,7 @@ contract FastJPEGFactory is Ownable {
     address public constant BURN_ADDRESS = address(0x000000000000000000000000000000000000dEaD);
     uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 1e18; // 800M coins with 18 decimals
     uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 1e18; // 200M coins with 18 decimals
-    uint256 public constant AIRDROP_SUPPLY = 160_000_000 * 1e18; // 160 million coins
+    uint256 public constant AIRDROP_SUPPLY = 200_000_000 * 1e18; // 200 million coins
 
     uint256 public constant GRADUATE_ETH = 10 ether; // 10 ETH to graduate coin
 

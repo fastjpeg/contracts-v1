@@ -186,11 +186,13 @@ contract FastJPEGFactoryTest is Test {
 
         // Check token balance
         assertEq(
-            FJC(coinAddress).balanceOf(user1), 235_977_527.380591821538147077 ether, "User1 should receive 40m tokens"
+            FJC(coinAddress).balanceOf(user1),
+            205_977_527.380591821538147077 ether,
+            "User1 should receive 205_977_527 tokens"
         );
-        assertEq(FJC(coinAddress).balanceOf(user2), 40_000_000 ether, "User2 should receive 40m tokens");
-        assertEq(FJC(coinAddress).balanceOf(user3), 40_000_000 ether, "User3 should receive 40m tokens");
-        assertEq(FJC(coinAddress).balanceOf(user4), 40_000_000 ether, "User4 should receive 40m tokens");
+        assertEq(FJC(coinAddress).balanceOf(user2), 50_000_000 ether, "User2 should receive 50m tokens");
+        assertEq(FJC(coinAddress).balanceOf(user3), 50_000_000 ether, "User3 should receive 50m tokens");
+        assertEq(FJC(coinAddress).balanceOf(user4), 50_000_000 ether, "User4 should receive 50m tokens");
     }
 
     function test_createTokenAirdropOverPayEth() public {
