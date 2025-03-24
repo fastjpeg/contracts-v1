@@ -16,7 +16,7 @@ contract FastJPEGFactoryTest is Test {
     FastJPEGFactory factory;
     string public coinName = "Fast JPEG coin";
     string public coinSymbol = "FJPG";
-    uint256 public signature = 0x8d97ddbf14571f9c4d122267efd3359632909d858bea23f0ee1a539493bed805;
+    uint256 public metadataHash = 0x8d97ddbf14571f9c4d122267efd3359632909d858bea23f0ee1a539493bed805;
 
     address public EXPECT_COIN_ADDRESS = 0xffD4505B3452Dc22f8473616d50503bA9E1710Ac;
     uint256 EXPECT_ONE_ETH_COIN_AMOUNT = 251_714_123.560836371277948843 ether;
@@ -70,7 +70,7 @@ contract FastJPEGFactoryTest is Test {
         // Expect NewCoin event
         vm.expectEmit(true, true, false, false);
         emit NewCoin(EXPECT_COIN_ADDRESS, user1);
-        factory.newCoin(coinName, coinSymbol, signature);
+        factory.newCoin(coinName, coinSymbol, metadataHash);
 
         vm.stopPrank();
     }
@@ -83,7 +83,7 @@ contract FastJPEGFactoryTest is Test {
         vm.startPrank(user1);
 
         // Create coin first
-        address coinAddress = factory.newCoin(coinName, coinSymbol, signature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
 
         // Expect BuyCoin event
         vm.expectEmit(true, true, false, false);
@@ -101,7 +101,7 @@ contract FastJPEGFactoryTest is Test {
         vm.startPrank(user1);
 
         // Create and buy coins first
-        address coinAddress = factory.newCoin(coinName, coinSymbol, signature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
         factory.buy{ value: 1 ether }(coinAddress);
 
         // Get coin instance
@@ -138,7 +138,7 @@ contract FastJPEGFactoryTest is Test {
         emit AirdropCoin(EXPECT_COIN_ADDRESS, user3, EXPECT_AIRDROP_COIN_AMOUNT);
 
         // Create coin with airdrop
-        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, signature);
+        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, metadataHash);
 
         vm.stopPrank();
     }
@@ -151,7 +151,7 @@ contract FastJPEGFactoryTest is Test {
         vm.startPrank(user1);
 
         // Create coin
-        address coinAddress = factory.newCoin(coinName, coinSymbol, signature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
 
         // Expect GraduateCoin event
         vm.expectEmit(true, false, false, false);
@@ -173,7 +173,7 @@ contract FastJPEGFactoryTest is Test {
         // 1. Create coin
         vm.expectEmit(true, true, false, false);
         emit NewCoin(EXPECT_COIN_ADDRESS, user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol, signature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
 
         // 2. Buy coins
         vm.expectEmit(true, true, false, false);
@@ -195,7 +195,7 @@ contract FastJPEGFactoryTest is Test {
         emit AirdropCoin(EXPECT_AIRDROP_COIN_ADDRESS, user2, EXPECT_AIRDROP_COIN_AMOUNT);
         vm.expectEmit(true, true, false, false);
         emit AirdropCoin(EXPECT_AIRDROP_COIN_ADDRESS, user3, EXPECT_AIRDROP_COIN_AMOUNT);
-        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, signature);
+        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, metadataHash);
 
         // 5. Graduate coin
         vm.expectEmit(true, false, false, false);

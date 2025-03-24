@@ -20,7 +20,7 @@ contract FastJPEGFactoryTest is Test {
     FastJPEGFactory factory;
     string public coinName = "Fast JPEG Coin";
     string public coinSymbol = "FJPG";
-    uint256 public testSignature = 0x8d97ddbf14571f9c4d122267efd3359632909d858bea23f0ee1a539493bed805;
+    uint256 public testMetadataHash = 0x8d97ddbf14571f9c4d122267efd3359632909d858bea23f0ee1a539493bed805;
 
     // Test users
     address public owner;
@@ -109,7 +109,7 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_buy() public {
         vm.startPrank(user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol, testSignature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
         factory.buy{ value: 2 ether }(coinAddress);
         vm.stopPrank();
 
@@ -129,7 +129,7 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_sell() public {
         vm.startPrank(user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol, testSignature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
         factory.buy{ value: 2 ether }(coinAddress);
         factory.sell(coinAddress, 100_000_000 * 1e18);
         vm.stopPrank();
@@ -150,7 +150,7 @@ contract FastJPEGFactoryTest is Test {
      */
     function testSellAll() public {
         vm.startPrank(user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol, testSignature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
         factory.buy{ value: 1 ether }(coinAddress);
 
         uint256 coinBalance = FJC(coinAddress).balanceOf(user1);
@@ -173,7 +173,7 @@ contract FastJPEGFactoryTest is Test {
     function test_createToken() public {
         // Impersonate user1
         vm.prank(user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol, testSignature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
 
         // Assertions
         assertTrue(coinAddress != address(0), "Token address should not be zero");
@@ -191,7 +191,7 @@ contract FastJPEGFactoryTest is Test {
             address poolAddress,
             uint256 ethReserve,
             uint256 coinsSold,
-            uint256 signature,
+            uint256 metadataHash,
             bool isGraduated
         ) = factory.coins(coinAddress);
 
@@ -201,7 +201,7 @@ contract FastJPEGFactoryTest is Test {
         assertEq(poolAddress, address(0), "Pool address should be zero initially");
         assertEq(ethReserve, 0, "Initial ETH collected should be 0");
         assertEq(coinsSold, 0, "Coins sold should be 0");
-        assertEq(signature, testSignature, "Metadata testSignature should match");
+        assertEq(metadataHash, testMetadataHash, "Metadata testMetadataHash should match");
         assertFalse(isGraduated, "Coin should not be graduated initially");
 
         // Check token balance
@@ -220,7 +220,7 @@ contract FastJPEGFactoryTest is Test {
 
         vm.startPrank(user1);
         address coinAddress =
-            factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, airdropRecipients, testSignature);
+            factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, airdropRecipients, testMetadataHash);
         vm.stopPrank();
 
         // Check token balance
@@ -245,7 +245,7 @@ contract FastJPEGFactoryTest is Test {
         airdropRecipients[3] = user4;
 
         vm.startPrank(user1);
-        factory.newCoinAirdrop{ value: 4 ether }(coinName, coinSymbol, airdropRecipients, testSignature);
+        factory.newCoinAirdrop{ value: 4 ether }(coinName, coinSymbol, airdropRecipients, testMetadataHash);
         vm.stopPrank();
 
         assertEq(address(factory).balance, 3.96 ether, "Factory should have 3.96 ether");
@@ -258,7 +258,7 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_createTokenAirdropNoRecipients() public {
         vm.startPrank(user1);
-        factory.newCoinAirdrop(coinName, coinSymbol, new address[](0), testSignature);
+        factory.newCoinAirdrop(coinName, coinSymbol, new address[](0), testMetadataHash);
         vm.stopPrank();
 
         assertEq(address(factory).balance, 0 ether, "Factory should have 0 ether");
@@ -271,7 +271,7 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_notGraduateToken() public {
         vm.startPrank(user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol, testSignature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
         factory.buy{ value: 0.99 ether }(coinAddress);
         vm.stopPrank();
 
@@ -285,7 +285,7 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_graduateTokenOnTenETH() public {
         vm.startPrank(user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol, testSignature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
         factory.buy{ value: 10 ether }(coinAddress);
         vm.stopPrank();
 
@@ -299,7 +299,7 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_graduateToken() public {
         vm.startPrank(user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol, testSignature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
         factory.buy{ value: 12 ether }(coinAddress);
         vm.stopPrank();
 
@@ -330,7 +330,7 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_consecutiveBuys() public {
         vm.startPrank(user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol, testSignature);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
         factory.buy{ value: 1 ether }(coinAddress);
         factory.buy{ value: 1 ether }(coinAddress);
         factory.buy{ value: 1 ether }(coinAddress);

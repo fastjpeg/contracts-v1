@@ -55,7 +55,7 @@ contract FastJPEGFactory is Ownable {
         address poolAddress;
         uint256 ethReserve;
         uint256 coinsSold;
-        uint256 signature;
+        uint256 metadataHash;
         bool isGraduated;
     }
 
@@ -92,12 +92,12 @@ contract FastJPEGFactory is Ownable {
      * @dev Launches a new coin with the specified name and symbol without airdrop recipients
      * @param name The name of the coin
      * @param symbol The symbol of the coin
-     * @param signature The signature of the metadata submitted to the coin keccak256(toHex(metadata))
+     * @param metadataHash The metadataHash of the metadata submitted to the coin keccak256(toHex(metadata))
      * @return Address of the newly created coin
      */
-    function newCoin(string memory name, string memory symbol, uint256 signature) public payable returns (address) {
+    function newCoin(string memory name, string memory symbol, uint256 metadataHash) public payable returns (address) {
         address[] memory emptyRecipients = new address[](0);
-        return newCoinAirdrop(name, symbol, emptyRecipients, signature);
+        return newCoinAirdrop(name, symbol, emptyRecipients, metadataHash);
     }
 
     /**
@@ -105,14 +105,14 @@ contract FastJPEGFactory is Ownable {
      * @param name The name of the coin
      * @param symbol The symbol of the coin
      * @param airdropRecipients Optional array of addresses to airdrop coins to (if msg.value >= 2 ETH)
-     * @param signature The signature of the metadata submitted to the coin keccak256(toHex(metadata))
+     * @param metadataHash The metadataHash of the metadata submitted to the coin keccak256(toHex(metadata))
      * @return Address of the newly created coin
      */
     function newCoinAirdrop(
         string memory name,
         string memory symbol,
         address[] memory airdropRecipients,
-        uint256 signature
+        uint256 metadataHash
     ) public payable returns (address) {
         // Deploy new coin - only mint bonding supply to contract initially
         FJC coin = new FJC(name, symbol);
@@ -124,7 +124,7 @@ contract FastJPEGFactory is Ownable {
         coinInfo.ethReserve = 0;
         coinInfo.coinsSold = 0;
         coinInfo.isGraduated = false;
-        coinInfo.signature = signature;
+        coinInfo.metadataHash = metadataHash;
         if (msg.value > 0) {
             _buy(address(coin), airdropRecipients);
         }
