@@ -16,6 +16,7 @@ contract FastJPEGFactoryTest is Test {
     FastJPEGFactory factory;
     string public coinName = "Fast JPEG coin";
     string public coinSymbol = "FJPG";
+    uint256 public signature = 0x8d97ddbf14571f9c4d122267efd3359632909d858bea23f0ee1a539493bed805;
 
     address public EXPECT_COIN_ADDRESS = 0xffD4505B3452Dc22f8473616d50503bA9E1710Ac;
     uint256 EXPECT_ONE_ETH_COIN_AMOUNT = 251_714_123.560836371277948843 ether;
@@ -59,36 +60,48 @@ contract FastJPEGFactoryTest is Test {
         vm.deal(feeTo, 0 ether);
     }
 
+    /**
+     * @notice Tests that the NewCoin event is emitted when a new coin is created
+     * @dev Verifies the event parameters match the expected coin address and creator
+     */
     function test_NewCoin_Event() public {
         vm.startPrank(user1);
 
-        // Expect coinCreated event
+        // Expect NewCoin event
         vm.expectEmit(true, true, false, false);
-        emit NewCoin(EXPECT_COIN_ADDRESS, user1); // address(0) is a placeholder
-        factory.newCoin(coinName, coinSymbol);
+        emit NewCoin(EXPECT_COIN_ADDRESS, user1);
+        factory.newCoin(coinName, coinSymbol, signature);
 
         vm.stopPrank();
     }
 
+    /**
+     * @notice Tests that the BuyCoin event is emitted when coins are purchased
+     * @dev Verifies the event parameters match the expected coin address, buyer, amount, and ETH spent
+     */
     function test_BuyCoin_Event() public {
         vm.startPrank(user1);
 
         // Create coin first
-        address coinAddress = factory.newCoin(coinName, coinSymbol);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, signature);
 
-        // Expect coinsBought event
+        // Expect BuyCoin event
         vm.expectEmit(true, true, false, false);
-        emit BuyCoin(coinAddress, user1, EXPECT_ONE_ETH_COIN_AMOUNT, 1 ether); // Amount will be calculated by contract
+        emit BuyCoin(coinAddress, user1, EXPECT_ONE_ETH_COIN_AMOUNT, 1 ether);
         factory.buy{ value: 1 ether }(coinAddress);
 
         vm.stopPrank();
     }
 
+    /**
+     * @notice Tests that the SellCoin event is emitted when coins are sold
+     * @dev Verifies the event parameters match the expected coin address, seller, amount, and ETH received
+     */
     function test_SellCoin_Event() public {
         vm.startPrank(user1);
 
         // Create and buy coins first
-        address coinAddress = factory.newCoin(coinName, coinSymbol);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, signature);
         factory.buy{ value: 1 ether }(coinAddress);
 
         // Get coin instance
@@ -97,14 +110,18 @@ contract FastJPEGFactoryTest is Test {
         // Approve factory to sell coins
         coin.approve(address(factory), coin.balanceOf(user1));
 
-        // Expect coinsSold event
+        // Expect SellCoin event
         vm.expectEmit(true, true, false, false);
-        emit SellCoin(coinAddress, user1, coin.balanceOf(user1), 0.9801 ether); // ETH amount will be calculated by contract
+        emit SellCoin(coinAddress, user1, coin.balanceOf(user1), 0.9801 ether);
         factory.sell(coinAddress, coin.balanceOf(user1));
 
         vm.stopPrank();
     }
 
+    /**
+     * @notice Tests that the AirdropCoin event is emitted for each recipient during an airdrop
+     * @dev Verifies the event parameters match the expected coin address, recipient, and amount
+     */
     function test_AirdropCoin_Event() public {
         vm.startPrank(user1);
 
@@ -113,26 +130,30 @@ contract FastJPEGFactoryTest is Test {
         recipients[0] = user2;
         recipients[1] = user3;
 
-        // Verify AirdropIssued events for each recipient
+        // Verify AirdropCoin events for each recipient
         vm.expectEmit(true, true, false, false);
-        emit AirdropCoin(EXPECT_COIN_ADDRESS, user2, EXPECT_AIRDROP_COIN_AMOUNT); // Amount will be calculated by contract
+        emit AirdropCoin(EXPECT_COIN_ADDRESS, user2, EXPECT_AIRDROP_COIN_AMOUNT);
 
         vm.expectEmit(true, true, false, false);
-        emit AirdropCoin(EXPECT_COIN_ADDRESS, user3, EXPECT_AIRDROP_COIN_AMOUNT); // Amount will be calculated by contract
+        emit AirdropCoin(EXPECT_COIN_ADDRESS, user3, EXPECT_AIRDROP_COIN_AMOUNT);
 
         // Create coin with airdrop
-        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients);
+        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, signature);
 
         vm.stopPrank();
     }
 
+    /**
+     * @notice Tests that the GraduateCoin event is emitted when a coin graduates
+     * @dev Verifies the event parameters match the expected coin address
+     */
     function test_GraduateCoin_Event() public {
         vm.startPrank(user1);
 
         // Create coin
-        address coinAddress = factory.newCoin(coinName, coinSymbol);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, signature);
 
-        // Expect coinGraduated event
+        // Expect GraduateCoin event
         vm.expectEmit(true, false, false, false);
         emit GraduateCoin(EXPECT_COIN_ADDRESS);
 
@@ -142,13 +163,17 @@ contract FastJPEGFactoryTest is Test {
         vm.stopPrank();
     }
 
+    /**
+     * @notice Tests all events in sequence through a complete lifecycle
+     * @dev Creates a coin, buys coins, sells coins, creates a coin with airdrop, and graduates a coin
+     */
     function test_AllEventsInSequence() public {
         vm.startPrank(user1);
 
         // 1. Create coin
         vm.expectEmit(true, true, false, false);
         emit NewCoin(EXPECT_COIN_ADDRESS, user1);
-        address coinAddress = factory.newCoin(coinName, coinSymbol);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, signature);
 
         // 2. Buy coins
         vm.expectEmit(true, true, false, false);
@@ -170,13 +195,11 @@ contract FastJPEGFactoryTest is Test {
         emit AirdropCoin(EXPECT_AIRDROP_COIN_ADDRESS, user2, EXPECT_AIRDROP_COIN_AMOUNT);
         vm.expectEmit(true, true, false, false);
         emit AirdropCoin(EXPECT_AIRDROP_COIN_ADDRESS, user3, EXPECT_AIRDROP_COIN_AMOUNT);
-        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients);
+        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, signature);
 
         // 5. Graduate coin
-
         vm.expectEmit(true, false, false, false);
         emit GraduateCoin(EXPECT_AIRDROP_COIN_ADDRESS);
-
         factory.buy{ value: 10 ether }(EXPECT_AIRDROP_COIN_ADDRESS);
 
         vm.stopPrank();

@@ -1,7 +1,17 @@
+/**
+ * .########....###.....######..########.......##.########..########..######..
+ * .##.........##.##...##....##....##..........##.##.....##.##.......##....##.
+ * .##........##...##..##..........##..........##.##.....##.##.......##.......
+ * .######...##.....##..######.....##..........##.########..######...##...####
+ * .##.......#########.......##....##....##....##.##........##.......##....##.
+ * .##.......##.....##.##....##....##....##....##.##........##.......##....##.
+ * .##.......##.....##..######.....##.....######..##........########..######..
+ */
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { console } from "forge-std/console.sol";
+// import { console } from "forge-std/console.sol";
 import { FJC } from "./FJC.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
@@ -9,6 +19,12 @@ import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
+/**
+ * @title FastJPEGFactory
+ * @dev A factory contract for creating and managing Fast JPEG Coins (FJC)
+ * Implements a bonding curve mechanism for token pricing and a graduation system
+ * to transition tokens to Uniswap V2 liquidity pools.
+ */
 contract FastJPEGFactory is Ownable {
     address public constant BURN_ADDRESS = address(0x000000000000000000000000000000000000dEaD);
     uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 1e18; // 800M coins with 18 decimals
@@ -39,6 +55,7 @@ contract FastJPEGFactory is Ownable {
         address poolAddress;
         uint256 ethReserve;
         uint256 coinsSold;
+        uint256 signature;
         bool isGraduated;
     }
 
@@ -51,12 +68,22 @@ contract FastJPEGFactory is Ownable {
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
     event GraduateCoin(address indexed coin);
 
+    /**
+     * @dev Initializes the contract with the provided DEX factory, router, and fee recipient
+     * @param _poolFactory Address of the Uniswap V2 Factory
+     * @param _router Address of the Uniswap V2 Router
+     * @param _feeTo Address that will receive fees
+     */
     constructor(address _poolFactory, address _router, address _feeTo) Ownable(msg.sender) {
         poolFactory = IUniswapV2Factory(_poolFactory);
         router = IUniswapV2Router02(_router);
         feeTo = _feeTo;
     }
 
+    /**
+     * @dev Updates the fee recipient address
+     * @param _feeTo New fee recipient address
+     */
     function setFeeTo(address _feeTo) external onlyOwner {
         feeTo = _feeTo;
     }
@@ -65,10 +92,12 @@ contract FastJPEGFactory is Ownable {
      * @dev Launches a new coin with the specified name and symbol without airdrop recipients
      * @param name The name of the coin
      * @param symbol The symbol of the coin
+     * @param signature The signature of the metadata submitted to the coin keccak256(toHex(metadata))
+     * @return Address of the newly created coin
      */
-    function newCoin(string memory name, string memory symbol) public payable returns (address) {
+    function newCoin(string memory name, string memory symbol, uint256 signature) public payable returns (address) {
         address[] memory emptyRecipients = new address[](0);
-        return newCoinAirdrop(name, symbol, emptyRecipients);
+        return newCoinAirdrop(name, symbol, emptyRecipients, signature);
     }
 
     /**
@@ -76,12 +105,15 @@ contract FastJPEGFactory is Ownable {
      * @param name The name of the coin
      * @param symbol The symbol of the coin
      * @param airdropRecipients Optional array of addresses to airdrop coins to (if msg.value >= 2 ETH)
+     * @param signature The signature of the metadata submitted to the coin keccak256(toHex(metadata))
+     * @return Address of the newly created coin
      */
-    function newCoinAirdrop(string memory name, string memory symbol, address[] memory airdropRecipients)
-        public
-        payable
-        returns (address)
-    {
+    function newCoinAirdrop(
+        string memory name,
+        string memory symbol,
+        address[] memory airdropRecipients,
+        uint256 signature
+    ) public payable returns (address) {
         // Deploy new coin - only mint bonding supply to contract initially
         FJC coin = new FJC(name, symbol);
 
@@ -92,7 +124,7 @@ contract FastJPEGFactory is Ownable {
         coinInfo.ethReserve = 0;
         coinInfo.coinsSold = 0;
         coinInfo.isGraduated = false;
-
+        coinInfo.signature = signature;
         if (msg.value > 0) {
             _buy(address(coin), airdropRecipients);
         }
@@ -101,13 +133,19 @@ contract FastJPEGFactory is Ownable {
         return address(coin);
     }
 
+    /**
+     * @dev Buy coins using ETH without airdrop
+     * @param coinAddress Address of the coin to buy
+     */
     function buy(address coinAddress) external payable {
         address[] memory emptyRecipients = new address[](0);
         _buy(coinAddress, emptyRecipients);
     }
 
     /**
-     * @dev Buy coins using ETH
+     * @dev Internal function to buy coins using ETH
+     * @param coinAddress Address of the coin to buy
+     * @param airdropRecipients Optional array of addresses to airdrop coins to
      */
     function _buy(address coinAddress, address[] memory airdropRecipients) internal {
         CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
@@ -174,7 +212,8 @@ contract FastJPEGFactory is Ownable {
     }
 
     /**
-     * @dev Sell coins to get ETH back
+     * @dev Sell coins to get ETH back based on the bonding curve
+     * @param coinAddress Address of the coin to sell
      * @param coinAmount Amount of coins to sell
      */
     function sell(address coinAddress, uint256 coinAmount) external {
@@ -214,7 +253,7 @@ contract FastJPEGFactory is Ownable {
     }
 
     /**
-     * @dev Calculate how many coins to mint for a given ETH amount
+     * @dev Calculate how many coins to mint for a given ETH amount using a quadratic bonding curve
      * @param ethAmount Amount of ETH sent
      * @param currentSupply Current total supply
      * @return Amount of coins to mint
@@ -271,7 +310,8 @@ contract FastJPEGFactory is Ownable {
     }
 
     /**
-     * @dev Internal function to graduate a coin to Aerodrome
+     * @dev Internal function to graduate a coin to Uniswap V2
+     * Mints graduation supply, pays fees, and adds liquidity to DEX
      * @param coinAddress The address of the coin to graduate
      * @param fee The amount of ETH to graduate the coin
      */
@@ -296,7 +336,7 @@ contract FastJPEGFactory is Ownable {
         // Allow dex to reach in and pull coins
         FJC(coinAddress).approve(address(router), GRADUATE_SUPPLY);
 
-        // Add liquidity to Aerodrome
+        // Add liquidity to Uniswap V2
         (,, uint256 liquidity) = router.addLiquidityETH{ value: liquidityEthAfterFee }(
             coinAddress,
             GRADUATE_SUPPLY,
@@ -312,17 +352,25 @@ contract FastJPEGFactory is Ownable {
         IERC20(lpCoinAddress).approve(address(router), liquidity);
         IERC20(lpCoinAddress).transfer(BURN_ADDRESS, liquidity);
 
-        // Tranfer ownership to null address
+        // Transfer ownership to null address
         FJC(coinAddress).renounceOwnership();
         emit GraduateCoin(coinAddress);
     }
 
+    /**
+     * @dev Helper function to retrieve coin info and validate its existence
+     * @param coinAddress Address of the coin to retrieve info for
+     * @return CoinInfo struct for the specified coin
+     */
     function _getCoinInfo(address coinAddress) internal view returns (CoinInfo storage) {
         CoinInfo storage coinInfo = coins[coinAddress];
         require(coinInfo.coinAddress != address(0), "Coin not found");
         return coinInfo;
     }
 
-    // Function to receive ETH
+    /**
+     * @dev Function to receive ETH
+     * Required for router.addLiquidityETH to work
+     */
     receive() external payable { }
 }
