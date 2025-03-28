@@ -1,6 +1,12 @@
-## Foundry
-
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+<div align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/fastjpeg/.github/refs/heads/main/fastjpeg-wordmark.svg">
+  <img alt="fastjpeg" src="https://raw.githubusercontent.com/fastjpeg/.github/refs/heads/main/fastjpeg-wordmark.svg">
+</picture>
+<h1>
+<a href="https://bun.sh/guides/install/workspaces">contracts</a>
+</h1>
+</div>
 
 
 ### Install SVM
