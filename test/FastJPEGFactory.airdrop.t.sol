@@ -65,10 +65,18 @@ contract FastJPEGFactoryAirdropTest is Test {
 
     function test_createCoinWithoutAirdrop() public {
         vm.startPrank(creator);
-        address coinAddress = factory.newCoin{value: 1 ether}("TestCoin", "TEST", metadataHash);
+        address coinAddress = factory.newCoin{ value: 1 ether }("TestCoin", "TEST", metadataHash);
         vm.stopPrank();
 
-        (address coinAddress_, address creator_, address poolAddress_, uint256 ethReserve_, uint256 coinsSold_, uint256 metadataHash_, bool isGraduated_) = factory.coins(coinAddress);
+        (
+            address coinAddress_,
+            address creator_,
+            address poolAddress_,
+            uint256 ethReserve_,
+            uint256 coinsSold_,
+            uint256 metadataHash_,
+            bool isGraduated_
+        ) = factory.coins(coinAddress);
         FastJPEGFactory.CoinInfo memory coinInfo = FastJPEGFactory.CoinInfo({
             coinAddress: coinAddress_,
             creator: creator_,
@@ -93,28 +101,23 @@ contract FastJPEGFactoryAirdropTest is Test {
         recipients[0] = user1;
         recipients[1] = user2;
         recipients[2] = user3;
-        
+
         uint256 airdropPercentage = 1000; // 10%
         uint256 expectedAirdropAmount = (factory.UNDERGRADUATE_SUPPLY() * airdropPercentage) / factory.BPS_DENOMINATOR();
-        
+
         vm.startPrank(creator);
-        address coinAddress = factory.newCoinAirdrop{value: 2 ether}(
-            "AirdropCoin", 
-            "AIR", 
-            recipients, 
-            airdropPercentage, 
-            metadataHash
-        );
+        address coinAddress =
+            factory.newCoinAirdrop{ value: 2 ether }("AirdropCoin", "AIR", recipients, airdropPercentage, metadataHash);
         vm.stopPrank();
-        
+
         FJC coin = FJC(coinAddress);
-        
+
         // Each recipient should have received equal share of the airdrop
         uint256 expectedPerRecipient = expectedAirdropAmount / recipients.length;
         assertApproxEqRel(coin.balanceOf(user1), expectedPerRecipient, 0.01e18); // Allow for small rounding differences
         assertApproxEqRel(coin.balanceOf(user2), expectedPerRecipient, 0.01e18);
         assertApproxEqRel(coin.balanceOf(user3), expectedPerRecipient, 0.01e18);
-        
+
         // Creator should also have received coins
         assertTrue(coin.balanceOf(creator) > 0, "Creator should have received coins");
     }
@@ -123,91 +126,74 @@ contract FastJPEGFactoryAirdropTest is Test {
         address[] memory recipients = new address[](2);
         recipients[0] = user1;
         recipients[1] = user2;
-        
+
         // Use the maximum allowed percentage (80%)
         uint256 airdropPercentage = factory.MAX_AIRDROP_PERCENTAGE_BPS();
-        
+
         vm.startPrank(creator);
-        address coinAddress = factory.newCoinAirdrop{value: 3 ether}(
-            "MaxAirdropCoin", 
-            "MAX", 
-            recipients, 
-            airdropPercentage, 
-            metadataHash
+        address coinAddress = factory.newCoinAirdrop{ value: 3 ether }(
+            "MaxAirdropCoin", "MAX", recipients, airdropPercentage, metadataHash
         );
         vm.stopPrank();
-        
+
         FJC coin = FJC(coinAddress);
-      
+
         // Both recipients should have received equal share of the max airdrop amount
         assertEq(coin.balanceOf(user1), 217_990_825.495019399910422362 ether);
         assertEq(coin.balanceOf(user2), 217_990_825.495019399910422362 ether);
     }
-    
+
     function test_airdropPercentageTooHigh() public {
         address[] memory recipients = new address[](1);
         recipients[0] = user1;
-        
+
         // Try to use a percentage higher than the maximum (80%)
         uint256 airdropPercentage = factory.MAX_AIRDROP_PERCENTAGE_BPS() + 1;
-        
+
         vm.startPrank(creator);
         vm.expectRevert("Airdrop percentage too high");
-        factory.newCoinAirdrop{value: 2 ether}(
-            "TooHighCoin", 
-            "HIGH", 
-            recipients, 
-            airdropPercentage, 
-            metadataHash
-        );
+        factory.newCoinAirdrop{ value: 2 ether }("TooHighCoin", "HIGH", recipients, airdropPercentage, metadataHash);
         vm.stopPrank();
     }
-    
+
     function test_airdropWithZeroPercentage() public {
         address[] memory recipients = new address[](2);
         recipients[0] = user1;
         recipients[1] = user2;
-        
+
         // Use 0% for airdrop
         uint256 airdropPercentage = 0;
-        
+
         vm.startPrank(creator);
-        address coinAddress = factory.newCoinAirdrop{value: 2 ether}(
-            "ZeroAirdropCoin", 
-            "ZERO", 
-            recipients, 
-            airdropPercentage, 
-            metadataHash
+        address coinAddress = factory.newCoinAirdrop{ value: 2 ether }(
+            "ZeroAirdropCoin", "ZERO", recipients, airdropPercentage, metadataHash
         );
         vm.stopPrank();
-        
+
         FJC coin = FJC(coinAddress);
-        
+
         // Recipients should have received zero coins even though they were specified
         assertEq(coin.balanceOf(user1), 0);
         assertEq(coin.balanceOf(user2), 0);
-        
+
         // Creator should have received all coins
         assertTrue(coin.balanceOf(creator) > 0, "Creator should have received coins");
     }
-    
+
     function test_airdropWithEmptyRecipients() public {
         address[] memory recipients = new address[](0);
-        
+
         // Use 50% for airdrop, but with empty recipients array
         uint256 airdropPercentage = 5000;
-        
+
         vm.startPrank(creator);
         vm.expectRevert("Airdrop percentage must be 0 when no recipients");
-        factory.newCoinAirdrop{value: 2 ether}(
-            "EmptyAirdropCoin", 
-            "EMPTY", 
-            recipients, 
-            airdropPercentage, 
-            metadataHash
+        factory.newCoinAirdrop{ value: 2 ether }(
+            "EmptyAirdropCoin", "EMPTY", recipients, airdropPercentage, metadataHash
         );
         vm.stopPrank();
     }
+
     function test_airdropDistribution() public {
         // Test with varying number of recipients to ensure distribution is even
         address[] memory recipients = new address[](5);
@@ -216,24 +202,20 @@ contract FastJPEGFactoryAirdropTest is Test {
         recipients[2] = user3;
         recipients[3] = address(0x10);
         recipients[4] = address(0x11);
-        
+
         uint256 airdropPercentage = 2500; // 25%
-        
+
         vm.startPrank(creator);
-        address coinAddress = factory.newCoinAirdrop{value: 2 ether}(
-            "DistributionCoin", 
-            "DIST", 
-            recipients, 
-            airdropPercentage, 
-            metadataHash
+        address coinAddress = factory.newCoinAirdrop{ value: 2 ether }(
+            "DistributionCoin", "DIST", recipients, airdropPercentage, metadataHash
         );
         vm.stopPrank();
-        
+
         FJC coin = FJC(coinAddress);
-        
+
         uint256 expectedAirdropAmount = (factory.UNDERGRADUATE_SUPPLY() * airdropPercentage) / factory.BPS_DENOMINATOR();
         uint256 expectedPerRecipient = expectedAirdropAmount / recipients.length;
-        
+
         // Check that each recipient got the same amount
         assertApproxEqRel(coin.balanceOf(recipients[0]), expectedPerRecipient, 0.01e18);
         assertApproxEqRel(coin.balanceOf(recipients[1]), expectedPerRecipient, 0.01e18);
@@ -241,37 +223,33 @@ contract FastJPEGFactoryAirdropTest is Test {
         assertApproxEqRel(coin.balanceOf(recipients[3]), expectedPerRecipient, 0.01e18);
         assertApproxEqRel(coin.balanceOf(recipients[4]), expectedPerRecipient, 0.01e18);
     }
-    
+
     function test_airdropWithMultipleBuys() public {
         // Test what happens when users buy after initial airdrop
         address[] memory recipients = new address[](1);
         recipients[0] = user1;
-        
+
         uint256 airdropPercentage = 3000; // 30%
-        
+
         vm.startPrank(creator);
-        address coinAddress = factory.newCoinAirdrop{value: 1 ether}(
-            "MultiBuyCoin", 
-            "MULTI", 
-            recipients, 
-            airdropPercentage, 
-            metadataHash
+        address coinAddress = factory.newCoinAirdrop{ value: 1 ether }(
+            "MultiBuyCoin", "MULTI", recipients, airdropPercentage, metadataHash
         );
         vm.stopPrank();
-        
+
         // Record user1's balance after airdrop
         FJC coin = FJC(coinAddress);
         uint256 user1BalanceAfterAirdrop = coin.balanceOf(user1);
         assertTrue(user1BalanceAfterAirdrop > 0, "User1 should have received airdrop");
-        
+
         // Another user buys some coins
         vm.startPrank(user2);
-        factory.buy{value: 1 ether}(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress);
         vm.stopPrank();
-        
+
         // User1's balance should not have changed after another user bought coins
         assertEq(coin.balanceOf(user1), user1BalanceAfterAirdrop);
         // User2 should have received some coins
         assertTrue(coin.balanceOf(user2) > 0, "User2 should have received coins from buying");
     }
-} 
+}

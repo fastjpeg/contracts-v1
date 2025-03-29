@@ -266,14 +266,13 @@ contract FastJPEGFactoryTest is Test {
         assertEq(user1.balance, 100 ether, "User1 should have 100 ether");
     }
 
-
     // expect error if recieptos is 0 and percentage is not 0
     function test_createTokenAirdropNoRecipientsAndPercentageNot0() public {
         vm.expectRevert("Airdrop percentage must be 0 when no recipients");
         factory.newCoinAirdrop(coinName, coinSymbol, new address[](0), 1000, testMetadataHash);
     }
 
-    /** 
+    /**
      * @dev Tests token creation with airdrop when airdrop percentage is 100%
      */
     function test_createTokenAirdrop100Percent() public {
