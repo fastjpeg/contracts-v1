@@ -220,7 +220,7 @@ contract FastJPEGFactoryTest is Test {
 
         vm.startPrank(user1);
         address coinAddress =
-            factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, airdropRecipients, testMetadataHash);
+            factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, airdropRecipients, 2500, testMetadataHash);
         vm.stopPrank();
 
         // Check token balance
@@ -245,7 +245,7 @@ contract FastJPEGFactoryTest is Test {
         airdropRecipients[3] = user4;
 
         vm.startPrank(user1);
-        factory.newCoinAirdrop{ value: 4 ether }(coinName, coinSymbol, airdropRecipients, testMetadataHash);
+        factory.newCoinAirdrop{ value: 4 ether }(coinName, coinSymbol, airdropRecipients, 2000, testMetadataHash);
         vm.stopPrank();
 
         assertEq(address(factory).balance, 3.96 ether, "Factory should have 3.96 ether");
@@ -258,7 +258,33 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_createTokenAirdropNoRecipients() public {
         vm.startPrank(user1);
-        factory.newCoinAirdrop(coinName, coinSymbol, new address[](0), testMetadataHash);
+        factory.newCoinAirdrop(coinName, coinSymbol, new address[](0), 0, testMetadataHash);
+        vm.stopPrank();
+
+        assertEq(address(factory).balance, 0 ether, "Factory should have 0 ether");
+        assertEq(feeTo.balance, 0 ether, "Fee recipient should have 0 ether");
+        assertEq(user1.balance, 100 ether, "User1 should have 100 ether");
+    }
+
+
+    // expect error if recieptos is 0 and percentage is not 0
+    function test_createTokenAirdropNoRecipientsAndPercentageNot0() public {
+        vm.expectRevert("Airdrop percentage must be 0 when no recipients");
+        factory.newCoinAirdrop(coinName, coinSymbol, new address[](0), 1000, testMetadataHash);
+    }
+
+    /** 
+     * @dev Tests token creation with airdrop when airdrop percentage is 100%
+     */
+    function test_createTokenAirdrop100Percent() public {
+        address[] memory airdropRecipients = new address[](4);
+        airdropRecipients[0] = user1;
+        airdropRecipients[1] = user2;
+        airdropRecipients[2] = user3;
+        airdropRecipients[3] = user4;
+
+        vm.startPrank(user1);
+        factory.newCoinAirdrop(coinName, coinSymbol, airdropRecipients, 10000, testMetadataHash);
         vm.stopPrank();
 
         assertEq(address(factory).balance, 0 ether, "Factory should have 0 ether");

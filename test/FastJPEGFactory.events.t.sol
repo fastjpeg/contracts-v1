@@ -138,7 +138,7 @@ contract FastJPEGFactoryTest is Test {
         emit AirdropCoin(EXPECT_COIN_ADDRESS, user3, EXPECT_AIRDROP_COIN_AMOUNT);
 
         // Create coin with airdrop
-        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, metadataHash);
+        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, 2000, metadataHash);
 
         vm.stopPrank();
     }
@@ -195,7 +195,7 @@ contract FastJPEGFactoryTest is Test {
         emit AirdropCoin(EXPECT_AIRDROP_COIN_ADDRESS, user2, EXPECT_AIRDROP_COIN_AMOUNT);
         vm.expectEmit(true, true, false, false);
         emit AirdropCoin(EXPECT_AIRDROP_COIN_ADDRESS, user3, EXPECT_AIRDROP_COIN_AMOUNT);
-        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, metadataHash);
+        factory.newCoinAirdrop{ value: 2 ether }(coinName, coinSymbol, recipients, 2000, metadataHash);
 
         // 5. Graduate coin
         vm.expectEmit(true, false, false, false);
