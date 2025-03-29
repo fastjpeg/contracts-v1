@@ -29,7 +29,9 @@ contract FastJPEGFactory is Ownable {
     address public constant BURN_ADDRESS = address(0x000000000000000000000000000000000000dEaD);
     uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 1e18; // 800M coins with 18 decimals
     uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 1e18; // 200M coins with 18 decimals
-    uint256 public constant AIRDROP_SUPPLY = 200_000_000 * 1e18; // 200 million coins
+    
+    // Remove fixed AIRDROP_SUPPLY and add max airdrop percentage
+    uint256 public constant MAX_AIRDROP_PERCENTAGE_BPS = 10000; // 100% maximum airdrop
 
     uint256 public constant GRADUATE_ETH = 10 ether; // 10 ETH to graduate coin
 
@@ -97,7 +99,7 @@ contract FastJPEGFactory is Ownable {
      */
     function newCoin(string memory name, string memory symbol, uint256 metadataHash) public payable returns (address) {
         address[] memory emptyRecipients = new address[](0);
-        return newCoinAirdrop(name, symbol, emptyRecipients, metadataHash);
+        return newCoinAirdrop(name, symbol, emptyRecipients, 0, metadataHash);
     }
 
     /**
@@ -105,6 +107,7 @@ contract FastJPEGFactory is Ownable {
      * @param name The name of the coin
      * @param symbol The symbol of the coin
      * @param airdropRecipients Optional array of addresses to airdrop coins to (if msg.value >= 2 ETH)
+     * @param airdropPercentageBps Percentage of undergraduate supply to airdrop in basis points (100 = 1%)
      * @param metadataHash The metadataHash of the metadata submitted to the coin keccak256(toHex(metadata))
      * @return Address of the newly created coin
      */
@@ -112,8 +115,15 @@ contract FastJPEGFactory is Ownable {
         string memory name,
         string memory symbol,
         address[] memory airdropRecipients,
+        uint256 airdropPercentageBps,
         uint256 metadataHash
     ) public payable returns (address) {
+        require(airdropPercentageBps <= MAX_AIRDROP_PERCENTAGE_BPS, "Airdrop percentage too high");
+        // If there are no airdrop recipients, the airdrop percentage must be 0
+        if (airdropRecipients.length == 0) {
+            require(airdropPercentageBps == 0, "Airdrop percentage must be 0 when no recipients");
+        }
+
         // Deploy new coin - only mint bonding supply to contract initially
         FJC coin = new FJC(name, symbol);
 
@@ -126,7 +136,7 @@ contract FastJPEGFactory is Ownable {
         coinInfo.isGraduated = false;
         coinInfo.metadataHash = metadataHash;
         if (msg.value > 0) {
-            _buy(address(coin), airdropRecipients);
+            _buy(address(coin), airdropRecipients, airdropPercentageBps);
         }
 
         emit NewCoin(address(coin), msg.sender);
@@ -139,15 +149,16 @@ contract FastJPEGFactory is Ownable {
      */
     function buy(address coinAddress) external payable {
         address[] memory emptyRecipients = new address[](0);
-        _buy(coinAddress, emptyRecipients);
+        _buy(coinAddress, emptyRecipients, 0);
     }
 
     /**
      * @dev Internal function to buy coins using ETH
      * @param coinAddress Address of the coin to buy
      * @param airdropRecipients Optional array of addresses to airdrop coins to
+     * @param airdropPercentageBps Percentage of undergraduate supply to airdrop in basis points
      */
-    function _buy(address coinAddress, address[] memory airdropRecipients) internal {
+    function _buy(address coinAddress, address[] memory airdropRecipients, uint256 airdropPercentageBps) internal {
         CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
         require(!coinInfo.isGraduated, "Coin been graduated, buys disabled");
         require(msg.value > 0, "Must send ETH");
@@ -178,8 +189,10 @@ contract FastJPEGFactory is Ownable {
             }
         }
 
-        if (coinsToMint > 0 && airdropRecipients.length > 0) {
-            airdropCoins = Math.min(coinsToMint, AIRDROP_SUPPLY);
+        if (coinsToMint > 0 && airdropRecipients.length > 0 && airdropPercentageBps > 0) {
+            // Calculate airdrop amount based on percentage of undergraduate supply
+            uint256 maxAirdropAmount = (UNDERGRADUATE_SUPPLY * airdropPercentageBps) / BPS_DENOMINATOR;
+            airdropCoins = Math.min(coinsToMint, maxAirdropAmount);
             uint256 coinsPerRecipient = airdropRecipients.length > 0 ? airdropCoins / airdropRecipients.length : 0;
             coinInfo.coinsSold += airdropCoins;
 
