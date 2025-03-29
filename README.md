@@ -19,24 +19,16 @@ svm install 0.5.16
 svm install 0.6.6
 ```
 
-###
-
-Start chain
-
-```sh
-anvil --chain-id 31337 --fork-url "https://lb.drpc.org/ogrpc?network=base&dkey=AmRKOjzeAU1HukkCkUA3_r8yxoJD_FgR75-snqSgS7QB"
-```
-
-Deploy contract
-
-```sh
-forge script script/AnvilFastJPEGFactory.s.sol:AnvilFastJPEGFactory --rpc-url http://localhost:8545 --broadcast
-```
+| Action          | Command          |
+|-----------------|------------------|
+| Start chain     | `bun run anvil`  |
+| Deploy contract | `bun run deploy` |
+| Generate ABI    | `bun run abi`    |
 
 FastJPEG factory address
 
 ```sh
-0x834Ea01e45F9b5365314358159d92d134d89feEb
+0x716473Fb4E7cD49c7d1eC7ec6d7490A03d9dA332
 ```
 
 feeTo
@@ -99,11 +91,6 @@ $ forge script script/FastJPEGFactory.s.sol:FastJPEGFactoryScript --rpc-url anvi
 ```shell
 $ cast <subcommand>
 ```
-
-### Genreate ABI
-```sh
-forge build --silent && jq '.abi' ./out/FastJPEGFactory.sol/FastJPEGFactory.json
-``` 
 
 ### Help
 
