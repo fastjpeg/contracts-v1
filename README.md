@@ -1,7 +1,7 @@
 <div align="center">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/fastjpeg/.github/refs/heads/main/fastjpeg-wordmark.svg">
-  <img alt="fastjpeg" src="https://raw.githubusercontent.com/fastjpeg/.github/refs/heads/main/fastjpeg-wordmark.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/fastjpeg/.github/refs/heads/main/fastjpeg-wordmark.svg" style="max-height: 48px;">
+  <img alt="fastjpeg" src="https://raw.githubusercontent.com/fastjpeg/.github/refs/heads/main/fastjpeg-wordmark.svg" style="max-height: 48px;">
 </picture>
 <h1>
 <a href="https://bun.sh/guides/install/workspaces">contracts</a>
