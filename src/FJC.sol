@@ -19,7 +19,7 @@ contract FJC is ERC20, Ownable, ERC20Capped {
         _mint(to, amount);
     }
 
-    function burn(address from, uint256 amount) external {
+    function burn(address from, uint256 amount) external onlyOwner {
         _burn(from, amount);
     }
 
