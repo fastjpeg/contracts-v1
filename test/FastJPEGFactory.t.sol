@@ -110,7 +110,7 @@ contract FastJPEGFactoryTest is Test {
     function test_buy() public {
         vm.startPrank(user1);
         address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
-        factory.buy{ value: 2 ether }(coinAddress);
+        factory.buy{ value: 2 ether }(coinAddress, 0);
         vm.stopPrank();
 
         FJC coin = FJC(coinAddress);
@@ -130,8 +130,8 @@ contract FastJPEGFactoryTest is Test {
     function test_sell() public {
         vm.startPrank(user1);
         address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
-        factory.buy{ value: 2 ether }(coinAddress);
-        factory.sell(coinAddress, 100_000_000 * 1e18);
+        factory.buy{ value: 2 ether }(coinAddress, 0);
+        factory.sell(coinAddress, 100_000_000 * 1e18, 0.4801 ether);
         vm.stopPrank();
 
         FJC coin = FJC(coinAddress);
@@ -151,11 +151,11 @@ contract FastJPEGFactoryTest is Test {
     function testSellAll() public {
         vm.startPrank(user1);
         address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
-        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
 
         uint256 coinBalance = FJC(coinAddress).balanceOf(user1);
 
-        factory.sell(coinAddress, coinBalance);
+        factory.sell(coinAddress, coinBalance, 0.9801 ether);
         vm.stopPrank();
 
         FJC coin = FJC(coinAddress);
@@ -297,7 +297,7 @@ contract FastJPEGFactoryTest is Test {
     function test_notGraduateToken() public {
         vm.startPrank(user1);
         address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
-        factory.buy{ value: 0.99 ether }(coinAddress);
+        factory.buy{ value: 0.99 ether }(coinAddress, 0);
         vm.stopPrank();
 
         (,,,,,, bool isGraduated) = factory.coins(coinAddress);
@@ -311,7 +311,7 @@ contract FastJPEGFactoryTest is Test {
     function test_graduateTokenOnTenETH() public {
         vm.startPrank(user1);
         address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
-        factory.buy{ value: 10 ether }(coinAddress);
+        factory.buy{ value: 10 ether }(coinAddress, 0);
         vm.stopPrank();
 
         (,,,,,, bool isGraduated) = factory.coins(coinAddress);
@@ -325,7 +325,7 @@ contract FastJPEGFactoryTest is Test {
     function test_graduateToken() public {
         vm.startPrank(user1);
         address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
-        factory.buy{ value: 12 ether }(coinAddress);
+        factory.buy{ value: 12 ether }(coinAddress, 0);
         vm.stopPrank();
 
         (,,,,,, bool isGraduated) = factory.coins(coinAddress);
@@ -356,16 +356,16 @@ contract FastJPEGFactoryTest is Test {
     function test_consecutiveBuys() public {
         vm.startPrank(user1);
         address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
-        factory.buy{ value: 1 ether }(coinAddress);
-        factory.buy{ value: 1 ether }(coinAddress);
-        factory.buy{ value: 1 ether }(coinAddress);
-        factory.buy{ value: 1 ether }(coinAddress);
-        factory.buy{ value: 1 ether }(coinAddress);
-        factory.buy{ value: 1 ether }(coinAddress);
-        factory.buy{ value: 1 ether }(coinAddress);
-        factory.buy{ value: 1 ether }(coinAddress);
-        factory.buy{ value: 1 ether }(coinAddress);
-        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
         vm.stopPrank();
 
         assertEq(

@@ -244,7 +244,7 @@ contract FastJPEGFactoryAirdropTest is Test {
 
         // Another user buys some coins
         vm.startPrank(user2);
-        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
         vm.stopPrank();
 
         // User1's balance should not have changed after another user bought coins
