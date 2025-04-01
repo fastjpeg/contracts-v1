@@ -20,6 +20,26 @@ import "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
+
+///----------------------------------------------------------------------------------------------------------------
+/// Events
+///----------------------------------------------------------------------------------------------------------------
+library FastJPEGFactoryError {
+    error AirdropPercentageTooHigh();
+    error AirdropPercentageMustBeZero();
+    error CoinGraduated();
+    error MustSendETH();
+    error MaxSupplyReached();
+    error InvalidRecipientAddress();
+    error FailedToSendETH();
+    error FailedToSendFee();
+    error CoinAlreadyGraduated();
+    error InsufficientBalance();
+    error InvalidAmount();
+    error InsufficientReserve();
+    error CoinNotFound();
+}
+
 /**
  * @title FastJPEGFactory
  * @dev A factory contract for creating and managing Fast JPEG Coins (FJC)
@@ -119,10 +139,14 @@ contract FastJPEGFactory is Ownable {
         uint256 airdropPercentageBps,
         uint256 metadataHash
     ) public payable returns (address) {
-        require(airdropPercentageBps <= MAX_AIRDROP_PERCENTAGE_BPS, "Airdrop percentage too high");
+        if (airdropPercentageBps > MAX_AIRDROP_PERCENTAGE_BPS) {
+            revert FastJPEGFactoryError.AirdropPercentageTooHigh();
+        }
         // If there are no airdrop recipients, the airdrop percentage must be 0
         if (airdropRecipients.length == 0) {
-            require(airdropPercentageBps == 0, "Airdrop percentage must be 0 when no recipients");
+            if (airdropPercentageBps != 0) {
+                revert FastJPEGFactoryError.AirdropPercentageMustBeZero();
+            }
         }
 
         // Deploy new coin - only mint bonding supply to contract initially
@@ -161,9 +185,15 @@ contract FastJPEGFactory is Ownable {
      */
     function _buy(address coinAddress, address[] memory airdropRecipients, uint256 airdropPercentageBps) internal {
         CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
-        require(!coinInfo.isGraduated, "Coin been graduated, buys disabled");
-        require(msg.value > 0, "Must send ETH");
-        require(coinInfo.coinsSold < UNDERGRADUATE_SUPPLY, "Max supply reached");
+        if (coinInfo.isGraduated) {
+            revert FastJPEGFactoryError.CoinGraduated();
+        }
+        if (msg.value == 0) {
+            revert FastJPEGFactoryError.MustSendETH();
+        }
+        if (coinInfo.coinsSold >= UNDERGRADUATE_SUPPLY) {
+            revert FastJPEGFactoryError.MaxSupplyReached();
+        }
 
         uint256 totalEthRaised = coinInfo.ethReserve + msg.value;
         uint256 purchaseEthBeforeFee = Math.min(msg.value, GRADUATE_ETH);
@@ -198,7 +228,9 @@ contract FastJPEGFactory is Ownable {
             coinInfo.coinsSold += airdropCoins;
 
             for (uint256 i = 0; i < airdropRecipients.length; i++) {
-                require(airdropRecipients[i] != address(0), "Invalid recipient address");
+                if (airdropRecipients[i] == address(0)) {
+                    revert FastJPEGFactoryError.InvalidRecipientAddress();
+                }
                 FJC(coinAddress).mint(airdropRecipients[i], coinsPerRecipient);
                 emit AirdropCoin(coinAddress, airdropRecipients[i], coinsPerRecipient);
             }
@@ -213,12 +245,16 @@ contract FastJPEGFactory is Ownable {
 
         if (totalEthRaised >= GRADUATE_ETH) {
             (bool successBuyer,) = msg.sender.call{ value: refundEth }("");
-            require(successBuyer, "Failed to send Ether");
+            if (!successBuyer) {
+                revert FastJPEGFactoryError.FailedToSendETH();
+            }
             coinInfo.ethReserve = GRADUATE_ETH;
             _graduateCoin(coinAddress, fee);
         } else {
             (bool successFeeTo,) = feeTo.call{ value: fee }("");
-            require(successFeeTo, "Failed to send Ether");
+            if (!successFeeTo) {
+                revert FastJPEGFactoryError.FailedToSendETH();
+            }
             coinInfo.ethReserve += purchaseEthBeforeFee - fee; // Subtract fee from reserve balance
         }
 
@@ -232,9 +268,15 @@ contract FastJPEGFactory is Ownable {
      */
     function sell(address coinAddress, uint256 coinAmount) external {
         CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
-        require(!coinInfo.isGraduated, "Coin graduated, sells disabled");
-        require(coinAmount > 0, "Amount must be positive");
-        require(FJC(coinAddress).balanceOf(msg.sender) >= coinAmount, "Insufficient balance");
+        if (coinInfo.isGraduated) {
+            revert FastJPEGFactoryError.CoinGraduated();
+        }
+        if (coinAmount == 0) {
+            revert FastJPEGFactoryError.InvalidAmount();
+        }
+        if (FJC(coinAddress).balanceOf(msg.sender) < coinAmount) {
+            revert FastJPEGFactoryError.InsufficientBalance();
+        }
 
         uint256 currentSupply = FJC(coinAddress).totalSupply();
 
@@ -245,7 +287,9 @@ contract FastJPEGFactory is Ownable {
         uint256 fee = (returnEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
         uint256 returnEth = returnEthBeforeFee - fee;
 
-        require(returnEth <= coinInfo.ethReserve, "Insufficient reserve");
+        if (returnEth > coinInfo.ethReserve) {
+            revert FastJPEGFactoryError.InsufficientReserve();
+        }
 
         // Update total coins sold
         coinInfo.coinsSold -= coinAmount;
@@ -258,11 +302,15 @@ contract FastJPEGFactory is Ownable {
 
         // Send fee to feeTo
         (bool successFeeTo,) = feeTo.call{ value: fee }("");
-        require(successFeeTo, "Failed to send Ether");
+        if (!successFeeTo) {
+            revert FastJPEGFactoryError.FailedToSendETH();
+        }
 
         // Send ETH to seller (after fee)
         (bool successSeller,) = msg.sender.call{ value: returnEth }("");
-        require(successSeller, "Failed to send Ether");
+        if (!successSeller) {
+            revert FastJPEGFactoryError.FailedToSendETH();
+        }
 
         emit SellCoin(coinAddress, msg.sender, coinAmount, returnEth);
     }
@@ -332,7 +380,9 @@ contract FastJPEGFactory is Ownable {
      */
     function _graduateCoin(address coinAddress, uint256 fee) internal {
         CoinInfo storage coinInfo = coins[coinAddress];
-        require(!coinInfo.isGraduated, "Coin already graduated");
+        if (coinInfo.isGraduated) {
+            revert FastJPEGFactoryError.CoinAlreadyGraduated();
+        }
         coinInfo.isGraduated = true;
 
         //mint graduation supply factory
@@ -341,10 +391,14 @@ contract FastJPEGFactory is Ownable {
         uint256 ownerFee = GRADUATION_FEE + fee;
         // pay feeTo GRADUATION_FEE
         (bool successFeeTo,) = feeTo.call{ value: ownerFee }("");
-        require(successFeeTo, "Failed to send Ether");
+        if (!successFeeTo) {
+            revert FastJPEGFactoryError.FailedToSendETH();
+        }
         // pay creator CREATOR_REWARD_FEE
         (bool successCreator,) = coinInfo.creator.call{ value: CREATOR_REWARD_FEE }("");
-        require(successCreator, "Failed to send Ether");
+        if (!successCreator) {
+            revert FastJPEGFactoryError.FailedToSendETH();
+        }
         // remaining ETH used for liquidity
         uint256 liquidityEthAfterFee = coinInfo.ethReserve - ownerFee - CREATOR_REWARD_FEE;
 
@@ -379,7 +433,9 @@ contract FastJPEGFactory is Ownable {
      */
     function _getCoinInfo(address coinAddress) internal view returns (CoinInfo storage) {
         CoinInfo storage coinInfo = coins[coinAddress];
-        require(coinInfo.coinAddress != address(0), "Coin not found");
+        if (coinInfo.coinAddress == address(0)) {
+            revert FastJPEGFactoryError.CoinNotFound();
+        }
         return coinInfo;
     }
 

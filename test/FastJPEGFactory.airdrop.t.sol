@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { Test, console } from "forge-std/Test.sol";
-import { FastJPEGFactory, FJC } from "../src/FastJPEGFactory.sol";
+import { FastJPEGFactory, FJC, FastJPEGFactoryError } from "../src/FastJPEGFactory.sol";
 import { IERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IUniswapV2Factory } from "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import { IUniswapV2Router02 } from "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
@@ -151,7 +151,7 @@ contract FastJPEGFactoryAirdropTest is Test {
         uint256 airdropPercentage = factory.MAX_AIRDROP_PERCENTAGE_BPS() + 1;
 
         vm.startPrank(creator);
-        vm.expectRevert("Airdrop percentage too high");
+        vm.expectRevert(abi.encodeWithSelector(FastJPEGFactoryError.AirdropPercentageTooHigh.selector));
         factory.newCoinAirdrop{ value: 2 ether }("TooHighCoin", "HIGH", recipients, airdropPercentage, metadataHash);
         vm.stopPrank();
     }
@@ -187,7 +187,7 @@ contract FastJPEGFactoryAirdropTest is Test {
         uint256 airdropPercentage = 5000;
 
         vm.startPrank(creator);
-        vm.expectRevert("Airdrop percentage must be 0 when no recipients");
+        vm.expectRevert(abi.encodeWithSelector(FastJPEGFactoryError.AirdropPercentageMustBeZero.selector));
         factory.newCoinAirdrop{ value: 2 ether }(
             "EmptyAirdropCoin", "EMPTY", recipients, airdropPercentage, metadataHash
         );
