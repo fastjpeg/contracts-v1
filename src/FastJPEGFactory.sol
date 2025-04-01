@@ -135,11 +135,11 @@ contract FastJPEGFactory is Ownable {
         coinInfo.coinsSold = 0;
         coinInfo.isGraduated = false;
         coinInfo.metadataHash = metadataHash;
+        emit NewCoin(address(coin), msg.sender);
         if (msg.value > 0) {
             _buy(address(coin), airdropRecipients, airdropPercentageBps);
         }
 
-        emit NewCoin(address(coin), msg.sender);
         return address(coin);
     }
 
