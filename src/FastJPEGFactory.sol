@@ -20,7 +20,6 @@ import "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-
 ///----------------------------------------------------------------------------------------------------------------
 /// Events
 ///----------------------------------------------------------------------------------------------------------------
@@ -120,7 +119,11 @@ contract FastJPEGFactory is Ownable {
      * @param metadataHash The metadataHash of the metadata submitted to the coin keccak256(toHex(metadata))
      * @return Address of the newly created coin
      */
-    function newCoin(string memory name, string memory symbol, uint256 metadataHash) external payable returns (address) {
+    function newCoin(string memory name, string memory symbol, uint256 metadataHash)
+        external
+        payable
+        returns (address)
+    {
         address[] memory emptyRecipients = new address[](0);
         return newCoinAirdrop(name, symbol, emptyRecipients, 0, metadataHash);
     }
@@ -227,7 +230,7 @@ contract FastJPEGFactory is Ownable {
 
         // Update coins sold state *after* airdrop minting is done in helper
         if (airdroppedCoins > 0) {
-             coinInfo.coinsSold += airdroppedCoins;
+            coinInfo.coinsSold += airdroppedCoins;
         }
 
         // --- Mint Buyer's Coins ---
@@ -236,14 +239,12 @@ contract FastJPEGFactory is Ownable {
             coinInfo.coinsSold += buyerCoins; // Update state for buyer coins
         }
 
-
-
         // --- Final State Update: Graduation or Fee Payment ---
         bool reachedGraduation = coinInfo.ethReserve + purchaseEth >= GRADUATE_ETH; // Check if the purchase *would* reach graduation
 
         if (reachedGraduation) {
-             // Ensure reserve doesn't exceed GRADUATE_ETH before calling graduate
-             // The purchaseEth might be less than msg.value if capped at GRADUATE_ETH
+            // Ensure reserve doesn't exceed GRADUATE_ETH before calling graduate
+            // The purchaseEth might be less than msg.value if capped at GRADUATE_ETH
             coinInfo.ethReserve = GRADUATE_ETH;
             _graduateCoin(coinAddress, fee); // Fee passed to graduate function
         } else {
@@ -252,7 +253,7 @@ contract FastJPEGFactory is Ownable {
             if (!successFeeTo) revert FastJPEGFactoryError.FailedToSendFee();
             coinInfo.ethReserve += ethAfterFee; // Update reserve only if not graduating
         }
-                // --- Handle ETH Refund ---
+        // --- Handle ETH Refund ---
         if (refundEth > 0) {
             (bool successRefund,) = msg.sender.call{ value: refundEth }("");
             if (!successRefund) revert FastJPEGFactoryError.FailedToSendETH();
@@ -328,7 +329,8 @@ contract FastJPEGFactory is Ownable {
      * @param coinAmount Amount of coins to sell
      * @param minEthOut Minimum amount of ETH expected
      */
-    function sell(address coinAddress, uint256 coinAmount, uint256 minEthOut) external { // Added minEthOut parameter
+    function sell(address coinAddress, uint256 coinAmount, uint256 minEthOut) external {
+        // Added minEthOut parameter
         CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
         if (coinInfo.isGraduated) {
             revert FastJPEGFactoryError.CoinGraduated();
@@ -342,10 +344,9 @@ contract FastJPEGFactory is Ownable {
 
         uint256 currentSupply = FJC(coinAddress).totalSupply();
         if (coinAmount > currentSupply) {
-             // This shouldn't happen if balance check passes, but good to have.
-             revert FastJPEGFactoryError.InsufficientBalance();
+            // This shouldn't happen if balance check passes, but good to have.
+            revert FastJPEGFactoryError.InsufficientBalance();
         }
-
 
         // Calculate ETH to return based on the bonding curve
         uint256 returnEthBeforeFee = calculateSaleReturn(coinAmount, currentSupply);
@@ -354,7 +355,8 @@ contract FastJPEGFactory is Ownable {
         uint256 fee = (returnEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
         uint256 returnEth = returnEthBeforeFee - fee;
 
-        if (returnEth < minEthOut) { // Check slippage
+        if (returnEth < minEthOut) {
+            // Check slippage
             revert FastJPEGFactoryError.InsufficientEthOut();
         }
 
@@ -365,10 +367,8 @@ contract FastJPEGFactory is Ownable {
         // Update total coins sold *before* burning to reflect the state change accurately
         coinInfo.coinsSold -= coinAmount;
 
-
         // Update reserve balance *before* sending ETH
         coinInfo.ethReserve -= returnEth;
-
 
         // Send fee to feeTo
         (bool successFeeTo,) = feeTo.call{ value: fee }("");
@@ -383,7 +383,6 @@ contract FastJPEGFactory is Ownable {
         // This follows Checks-Effects-Interactions pattern more closely
         FJC(coinAddress).burn(msg.sender, coinAmount);
 
-
         // Send ETH to seller (after fee)
         (bool successSeller,) = msg.sender.call{ value: returnEth }("");
         if (!successSeller) {
@@ -391,14 +390,14 @@ contract FastJPEGFactory is Ownable {
             // This state is complex to revert fully. The ETH remains in the contract.
             // Ideally, handle this potential failure scenario based on desired contract behavior (e.g., allow withdrawal later?).
             // For now, we revert, which might lock the fee and burned tokens state if not handled carefully upstream.
-             // Revert state changes if seller transfer fails
-             // Note: This revert might not be ideal as the fee has been sent.
-             // Consider alternative recovery mechanisms if needed.
-             coinInfo.ethReserve += returnEth; // Add back returnEth sent to seller (which failed)
-             coinInfo.coinsSold += coinAmount; // Add back burned coins
-             // Attempt to refund the fee to the contract (complex, might require feeTo cooperation or state flags)
-             // Reverting here is simpler but leaves fee potentially lost if feeTo received it.
-             revert FastJPEGFactoryError.FailedToSendETH();
+            // Revert state changes if seller transfer fails
+            // Note: This revert might not be ideal as the fee has been sent.
+            // Consider alternative recovery mechanisms if needed.
+            coinInfo.ethReserve += returnEth; // Add back returnEth sent to seller (which failed)
+            coinInfo.coinsSold += coinAmount; // Add back burned coins
+            // Attempt to refund the fee to the contract (complex, might require feeTo cooperation or state flags)
+            // Reverting here is simpler but leaves fee potentially lost if feeTo received it.
+            revert FastJPEGFactoryError.FailedToSendETH();
         }
 
         emit SellCoin(coinAddress, msg.sender, coinAmount, returnEth);
