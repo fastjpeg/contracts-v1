@@ -38,6 +38,8 @@ library FastJPEGFactoryError {
     error InvalidAmount();
     error InsufficientReserve();
     error CoinNotFound();
+    error InsufficientCoinsOut();
+    error InsufficientEthOut();
 }
 
 /**
@@ -162,19 +164,20 @@ contract FastJPEGFactory is Ownable {
         coinInfo.metadataHash = metadataHash;
         emit NewCoin(address(coin), msg.sender);
         if (msg.value > 0) {
-            _buy(address(coin), airdropRecipients, airdropPercentageBps);
+            _buy(address(coin), airdropRecipients, airdropPercentageBps, 0);
         }
 
         return address(coin);
     }
 
     /**
-     * @dev Buy coins using ETH without airdrop
+     * @dev Buy coins using ETH without airdrop, with slippage protection
      * @param coinAddress Address of the coin to buy
+     * @param minCoinsOut Minimum amount of coins expected
      */
-    function buy(address coinAddress) external payable {
+    function buy(address coinAddress, uint256 minCoinsOut) external payable {
         address[] memory emptyRecipients = new address[](0);
-        _buy(coinAddress, emptyRecipients, 0);
+        _buy(coinAddress, emptyRecipients, 0, minCoinsOut);
     }
 
     /**
@@ -182,91 +185,149 @@ contract FastJPEGFactory is Ownable {
      * @param coinAddress Address of the coin to buy
      * @param airdropRecipients Optional array of addresses to airdrop coins to
      * @param airdropPercentageBps Percentage of undergraduate supply to airdrop in basis points
+     * @param minCoinsOut Minimum amount of coins expected for the buyer (msg.sender)
      */
-    function _buy(address coinAddress, address[] memory airdropRecipients, uint256 airdropPercentageBps) internal {
+    function _buy(
+        address coinAddress,
+        address[] memory airdropRecipients,
+        uint256 airdropPercentageBps,
+        uint256 minCoinsOut
+    ) internal {
         CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
-        if (coinInfo.isGraduated) {
-            revert FastJPEGFactoryError.CoinGraduated();
-        }
-        if (msg.value == 0) {
-            revert FastJPEGFactoryError.MustSendETH();
-        }
-        if (coinInfo.coinsSold >= UNDERGRADUATE_SUPPLY) {
-            revert FastJPEGFactoryError.MaxSupplyReached();
-        }
+        // --- Initial Checks ---
+        if (coinInfo.isGraduated) revert FastJPEGFactoryError.CoinGraduated();
+        if (msg.value == 0) revert FastJPEGFactoryError.MustSendETH();
+        if (coinInfo.coinsSold >= UNDERGRADUATE_SUPPLY) revert FastJPEGFactoryError.MaxSupplyReached();
 
-        uint256 totalEthRaised = coinInfo.ethReserve + msg.value;
-        uint256 purchaseEthBeforeFee = Math.min(msg.value, GRADUATE_ETH);
-        uint256 refundEth = totalEthRaised - purchaseEthBeforeFee;
-
-        uint256 coinsToMint = calculatePurchaseAmount(purchaseEthBeforeFee, coinInfo.coinsSold);
-
-        // Check if minting would exceed max supply and cap if necessary
-        if (coinInfo.coinsSold + coinsToMint > UNDERGRADUATE_SUPPLY) {
-            coinsToMint = UNDERGRADUATE_SUPPLY - coinInfo.coinsSold;
+        // --- Calculate ETH amounts and potential refund ---
+        uint256 purchaseEth = msg.value;
+        uint256 refundEth = 0;
+        if (coinInfo.ethReserve + msg.value > GRADUATE_ETH) {
+            purchaseEth = GRADUATE_ETH - coinInfo.ethReserve;
+            refundEth = msg.value - purchaseEth;
         }
 
-        uint256 totalCoins = coinInfo.coinsSold + coinsToMint;
-        uint256 airdropCoins = 0;
-        uint256 fee = (purchaseEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
+        // --- Calculate fee and net ETH ---
+        uint256 fee = (purchaseEth * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
+        uint256 ethAfterFee = purchaseEth - fee;
 
-        if (totalCoins < UNDERGRADUATE_SUPPLY) {
-            uint256 purchaseEth = purchaseEthBeforeFee - fee;
-            coinsToMint = calculatePurchaseAmount(purchaseEth, coinInfo.coinsSold);
+        // --- Calculate potential coins and apply supply cap ---
+        uint256 potentialNetCoins = calculatePurchaseAmount(ethAfterFee, coinInfo.coinsSold);
+        uint256 remainingSupply = UNDERGRADUATE_SUPPLY - coinInfo.coinsSold;
+        uint256 actualNetCoinsToMint = Math.min(potentialNetCoins, remainingSupply);
 
-            // Check again after fee calculation
-            if (coinInfo.coinsSold + coinsToMint > UNDERGRADUATE_SUPPLY) {
-                coinsToMint = UNDERGRADUATE_SUPPLY - coinInfo.coinsSold;
-            }
+        // --- Handle Airdrop Distribution & Slippage Check ---
+        (uint256 buyerCoins, uint256 airdroppedCoins) = _handleAirdrop(
+            coinAddress,
+            actualNetCoinsToMint,
+            airdropRecipients,
+            airdropPercentageBps,
+            minCoinsOut // Pass buyer's minimum expectation
+        );
+
+        // Update coins sold state *after* airdrop minting is done in helper
+        if (airdroppedCoins > 0) {
+             coinInfo.coinsSold += airdroppedCoins;
         }
 
-        if (coinsToMint > 0 && airdropRecipients.length > 0 && airdropPercentageBps > 0) {
-            // Calculate airdrop amount based on percentage of undergraduate supply
-            uint256 maxAirdropAmount = (UNDERGRADUATE_SUPPLY * airdropPercentageBps) / BPS_DENOMINATOR;
-            airdropCoins = Math.min(coinsToMint, maxAirdropAmount);
-            uint256 coinsPerRecipient = airdropRecipients.length > 0 ? airdropCoins / airdropRecipients.length : 0;
-            coinInfo.coinsSold += airdropCoins;
-
-            for (uint256 i = 0; i < airdropRecipients.length; i++) {
-                if (airdropRecipients[i] == address(0)) {
-                    revert FastJPEGFactoryError.InvalidRecipientAddress();
-                }
-                FJC(coinAddress).mint(airdropRecipients[i], coinsPerRecipient);
-                emit AirdropCoin(coinAddress, airdropRecipients[i], coinsPerRecipient);
-            }
+        // --- Mint Buyer's Coins ---
+        if (buyerCoins > 0) {
+            FJC(coinAddress).mint(msg.sender, buyerCoins);
+            coinInfo.coinsSold += buyerCoins; // Update state for buyer coins
         }
 
-        uint256 remainingCoins = coinsToMint - airdropCoins;
-
-        if (remainingCoins > 0) {
-            FJC(coinAddress).mint(msg.sender, remainingCoins);
-            coinInfo.coinsSold += remainingCoins;
+        // --- Handle ETH Refund ---
+        if (refundEth > 0) {
+            (bool successRefund,) = msg.sender.call{ value: refundEth }("");
+            if (!successRefund) revert FastJPEGFactoryError.FailedToSendETH();
         }
 
-        if (totalEthRaised >= GRADUATE_ETH) {
-            (bool successBuyer,) = msg.sender.call{ value: refundEth }("");
-            if (!successBuyer) {
-                revert FastJPEGFactoryError.FailedToSendETH();
-            }
+        // --- Final State Update: Graduation or Fee Payment ---
+        bool reachedGraduation = coinInfo.ethReserve + purchaseEth >= GRADUATE_ETH; // Check if the purchase *would* reach graduation
+
+        if (reachedGraduation) {
+             // Ensure reserve doesn't exceed GRADUATE_ETH before calling graduate
+             // The purchaseEth might be less than msg.value if capped at GRADUATE_ETH
             coinInfo.ethReserve = GRADUATE_ETH;
-            _graduateCoin(coinAddress, fee);
+            _graduateCoin(coinAddress, fee); // Fee passed to graduate function
         } else {
+            // Send fee if not graduating
             (bool successFeeTo,) = feeTo.call{ value: fee }("");
-            if (!successFeeTo) {
-                revert FastJPEGFactoryError.FailedToSendETH();
-            }
-            coinInfo.ethReserve += purchaseEthBeforeFee - fee; // Subtract fee from reserve balance
+            if (!successFeeTo) revert FastJPEGFactoryError.FailedToSendFee();
+            coinInfo.ethReserve += ethAfterFee; // Update reserve only if not graduating
         }
 
-        emit BuyCoin(coinAddress, msg.sender, coinsToMint, purchaseEthBeforeFee);
+        emit BuyCoin(coinAddress, msg.sender, actualNetCoinsToMint, purchaseEth); // Emit total net coins minted
     }
 
     /**
-     * @dev Sell coins to get ETH back based on the bonding curve
+     * @dev Internal helper function to handle airdrop distribution and checks.
+     * Mints coins to airdrop recipients directly.
+     * @param coinAddress Address of the coin
+     * @param totalNetCoins Total coins available for distribution (after fee, before airdrop split)
+     * @param airdropRecipients Array of recipient addresses
+     * @param airdropPercentageBps Percentage of undergraduate supply for airdrop
+     * @param minBuyerCoinsOut Minimum coins the buyer (caller of _buy) expects to receive
+     * @return buyerCoins Amount of coins allocated to the buyer
+     * @return airdropCoinsDistributed Total amount of coins successfully airdropped
+     */
+    function _handleAirdrop(
+        address coinAddress,
+        uint256 totalNetCoins,
+        address[] memory airdropRecipients,
+        uint256 airdropPercentageBps,
+        uint256 minBuyerCoinsOut
+    ) internal returns (uint256 buyerCoins, uint256 airdropCoinsDistributed) {
+        // Check if airdrop is feasible/requested
+        if (totalNetCoins == 0 || airdropRecipients.length == 0 || airdropPercentageBps == 0) {
+            // No airdrop possible or requested, all coins go to buyer
+            if (totalNetCoins < minBuyerCoinsOut) {
+                revert FastJPEGFactoryError.InsufficientCoinsOut();
+            }
+            return (totalNetCoins, 0);
+        }
+
+        uint256 maxAirdropAmount = (UNDERGRADUATE_SUPPLY * airdropPercentageBps) / BPS_DENOMINATOR;
+        uint256 potentialAirdropCoins = Math.min(totalNetCoins, maxAirdropAmount);
+        uint256 coinsPerRecipient = potentialAirdropCoins / airdropRecipients.length; // Integer division
+
+        if (coinsPerRecipient == 0) {
+            // Not enough coins to distribute even 1 per recipient, all coins go to buyer
+            if (totalNetCoins < minBuyerCoinsOut) {
+                revert FastJPEGFactoryError.InsufficientCoinsOut();
+            }
+            return (totalNetCoins, 0);
+        }
+
+        // Calculate actual airdrop amount and remaining buyer coins
+        airdropCoinsDistributed = coinsPerRecipient * airdropRecipients.length;
+        buyerCoins = totalNetCoins - airdropCoinsDistributed;
+
+        // Check slippage for the buyer's portion *after* airdrop allocation
+        if (buyerCoins < minBuyerCoinsOut) {
+            revert FastJPEGFactoryError.InsufficientCoinsOut();
+        }
+
+        // Perform the airdrop minting
+        for (uint256 i = 0; i < airdropRecipients.length; i++) {
+            if (airdropRecipients[i] == address(0)) {
+                revert FastJPEGFactoryError.InvalidRecipientAddress();
+            }
+            FJC(coinAddress).mint(airdropRecipients[i], coinsPerRecipient);
+            emit AirdropCoin(coinAddress, airdropRecipients[i], coinsPerRecipient);
+            // Note: coinsSold state is updated in the main _buy function after this helper returns
+        }
+
+        return (buyerCoins, airdropCoinsDistributed);
+    }
+
+    /**
+     * @dev Sell coins to get ETH back based on the bonding curve, with slippage protection
      * @param coinAddress Address of the coin to sell
      * @param coinAmount Amount of coins to sell
+     * @param minEthOut Minimum amount of ETH expected
      */
-    function sell(address coinAddress, uint256 coinAmount) external {
+    function sell(address coinAddress, uint256 coinAmount, uint256 minEthOut) external { // Added minEthOut parameter
         CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
         if (coinInfo.isGraduated) {
             revert FastJPEGFactoryError.CoinGraduated();
@@ -279,6 +340,11 @@ contract FastJPEGFactory is Ownable {
         }
 
         uint256 currentSupply = FJC(coinAddress).totalSupply();
+        if (coinAmount > currentSupply) {
+             // This shouldn't happen if balance check passes, but good to have.
+             revert FastJPEGFactoryError.InsufficientBalance();
+        }
+
 
         // Calculate ETH to return based on the bonding curve
         uint256 returnEthBeforeFee = calculateSaleReturn(coinAmount, currentSupply);
@@ -287,29 +353,51 @@ contract FastJPEGFactory is Ownable {
         uint256 fee = (returnEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
         uint256 returnEth = returnEthBeforeFee - fee;
 
+        if (returnEth < minEthOut) { // Check slippage
+            revert FastJPEGFactoryError.InsufficientEthOut();
+        }
+
         if (returnEth > coinInfo.ethReserve) {
             revert FastJPEGFactoryError.InsufficientReserve();
         }
 
-        // Update total coins sold
+        // Update total coins sold *before* burning to reflect the state change accurately
         coinInfo.coinsSold -= coinAmount;
 
-        // Burn coins
-        FJC(coinAddress).burn(msg.sender, coinAmount);
 
-        // Update reserve balance
+        // Update reserve balance *before* sending ETH
         coinInfo.ethReserve -= returnEth;
+
 
         // Send fee to feeTo
         (bool successFeeTo,) = feeTo.call{ value: fee }("");
         if (!successFeeTo) {
-            revert FastJPEGFactoryError.FailedToSendETH();
+            // Revert state changes if fee transfer fails
+            coinInfo.ethReserve += returnEth; // Add back returnEth
+            coinInfo.coinsSold += coinAmount; // Add back sold coins
+            revert FastJPEGFactoryError.FailedToSendFee(); // Use specific error
         }
+
+        // Burn coins *after* state updates and fee transfer, *before* sending ETH to seller
+        // This follows Checks-Effects-Interactions pattern more closely
+        FJC(coinAddress).burn(msg.sender, coinAmount);
+
 
         // Send ETH to seller (after fee)
         (bool successSeller,) = msg.sender.call{ value: returnEth }("");
         if (!successSeller) {
-            revert FastJPEGFactoryError.FailedToSendETH();
+            // If ETH transfer to seller fails, we have already deducted fee and ETH from reserve, and burned tokens.
+            // This state is complex to revert fully. The ETH remains in the contract.
+            // Ideally, handle this potential failure scenario based on desired contract behavior (e.g., allow withdrawal later?).
+            // For now, we revert, which might lock the fee and burned tokens state if not handled carefully upstream.
+             // Revert state changes if seller transfer fails
+             // Note: This revert might not be ideal as the fee has been sent.
+             // Consider alternative recovery mechanisms if needed.
+             coinInfo.ethReserve += returnEth; // Add back returnEth sent to seller (which failed)
+             coinInfo.coinsSold += coinAmount; // Add back burned coins
+             // Attempt to refund the fee to the contract (complex, might require feeTo cooperation or state flags)
+             // Reverting here is simpler but leaves fee potentially lost if feeTo received it.
+             revert FastJPEGFactoryError.FailedToSendETH();
         }
 
         emit SellCoin(coinAddress, msg.sender, coinAmount, returnEth);

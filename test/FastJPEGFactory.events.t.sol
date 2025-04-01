@@ -88,7 +88,7 @@ contract FastJPEGFactoryTest is Test {
         // Expect BuyCoin event
         vm.expectEmit(true, true, false, false);
         emit BuyCoin(coinAddress, user1, EXPECT_ONE_ETH_COIN_AMOUNT, 1 ether);
-        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
 
         vm.stopPrank();
     }
@@ -102,7 +102,7 @@ contract FastJPEGFactoryTest is Test {
 
         // Create and buy coins first
         address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
-        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
 
         // Get coin instance
         FJC coin = FJC(coinAddress);
@@ -113,7 +113,7 @@ contract FastJPEGFactoryTest is Test {
         // Expect SellCoin event
         vm.expectEmit(true, true, false, false);
         emit SellCoin(coinAddress, user1, coin.balanceOf(user1), 0.9801 ether);
-        factory.sell(coinAddress, coin.balanceOf(user1));
+        factory.sell(coinAddress, coin.balanceOf(user1), 0.9801 ether);
 
         vm.stopPrank();
     }
@@ -158,7 +158,7 @@ contract FastJPEGFactoryTest is Test {
         emit GraduateCoin(EXPECT_COIN_ADDRESS);
 
         // Buy enough coins to trigger graduation (10 ETH)
-        factory.buy{ value: 10 ether }(coinAddress);
+        factory.buy{ value: 10 ether }(coinAddress, 0);
 
         vm.stopPrank();
     }
@@ -178,14 +178,14 @@ contract FastJPEGFactoryTest is Test {
         // 2. Buy coins
         vm.expectEmit(true, true, false, false);
         emit BuyCoin(coinAddress, user1, EXPECT_ONE_ETH_COIN_AMOUNT, 1 ether);
-        factory.buy{ value: 1 ether }(coinAddress);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
 
         // 3. Sell coins
         FJC coin = FJC(coinAddress);
         coin.approve(address(factory), coin.balanceOf(user1));
         vm.expectEmit(true, true, false, false);
         emit SellCoin(coinAddress, user1, coin.balanceOf(user1), 0.9801 ether);
-        factory.sell(coinAddress, coin.balanceOf(user1));
+        factory.sell(coinAddress, coin.balanceOf(user1), 0.9801 ether);
 
         // 4. Create coin with airdrop
         address[] memory recipients = new address[](2);
@@ -200,7 +200,7 @@ contract FastJPEGFactoryTest is Test {
         // 5. Graduate coin
         vm.expectEmit(true, false, false, false);
         emit GraduateCoin(EXPECT_AIRDROP_COIN_ADDRESS);
-        factory.buy{ value: 10 ether }(EXPECT_AIRDROP_COIN_ADDRESS);
+        factory.buy{ value: 10 ether }(EXPECT_AIRDROP_COIN_ADDRESS, 0);
 
         vm.stopPrank();
     }
