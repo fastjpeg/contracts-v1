@@ -97,7 +97,7 @@ contract FastJPEGFactory is Ownable {
      * @param metadataHash The metadataHash of the metadata submitted to the coin keccak256(toHex(metadata))
      * @return Address of the newly created coin
      */
-    function newCoin(string memory name, string memory symbol, uint256 metadataHash) public payable returns (address) {
+    function newCoin(string memory name, string memory symbol, uint256 metadataHash) external payable returns (address) {
         address[] memory emptyRecipients = new address[](0);
         return newCoinAirdrop(name, symbol, emptyRecipients, 0, metadataHash);
     }
