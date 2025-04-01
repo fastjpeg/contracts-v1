@@ -236,11 +236,7 @@ contract FastJPEGFactory is Ownable {
             coinInfo.coinsSold += buyerCoins; // Update state for buyer coins
         }
 
-        // --- Handle ETH Refund ---
-        if (refundEth > 0) {
-            (bool successRefund,) = msg.sender.call{ value: refundEth }("");
-            if (!successRefund) revert FastJPEGFactoryError.FailedToSendETH();
-        }
+
 
         // --- Final State Update: Graduation or Fee Payment ---
         bool reachedGraduation = coinInfo.ethReserve + purchaseEth >= GRADUATE_ETH; // Check if the purchase *would* reach graduation
@@ -255,6 +251,11 @@ contract FastJPEGFactory is Ownable {
             (bool successFeeTo,) = feeTo.call{ value: fee }("");
             if (!successFeeTo) revert FastJPEGFactoryError.FailedToSendFee();
             coinInfo.ethReserve += ethAfterFee; // Update reserve only if not graduating
+        }
+                // --- Handle ETH Refund ---
+        if (refundEth > 0) {
+            (bool successRefund,) = msg.sender.call{ value: refundEth }("");
+            if (!successRefund) revert FastJPEGFactoryError.FailedToSendETH();
         }
 
         emit BuyCoin(coinAddress, msg.sender, actualNetCoinsToMint, purchaseEth); // Emit total net coins minted
