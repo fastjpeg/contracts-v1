@@ -383,10 +383,6 @@ contract FastJPEGFactory is Ownable {
         if (coinInfo.isGraduated) {
             revert FastJPEGFactoryError.CoinAlreadyGraduated();
         }
-        coinInfo.isGraduated = true;
-
-        //mint graduation supply factory
-        FJC(coinAddress).mint(address(this), GRADUATE_SUPPLY);
 
         uint256 ownerFee = GRADUATION_FEE + fee;
         // pay feeTo GRADUATION_FEE
@@ -399,6 +395,10 @@ contract FastJPEGFactory is Ownable {
         if (!successCreator) {
             revert FastJPEGFactoryError.FailedToSendETH();
         }
+
+        //mint graduation supply factory
+        FJC(coinAddress).mint(address(this), GRADUATE_SUPPLY);
+
         // remaining ETH used for liquidity
         uint256 liquidityEthAfterFee = coinInfo.ethReserve - ownerFee - CREATOR_REWARD_FEE;
 
@@ -423,6 +423,7 @@ contract FastJPEGFactory is Ownable {
 
         // Transfer ownership to null address
         FJC(coinAddress).renounceOwnership();
+        coinInfo.isGraduated = true;
         emit GraduateCoin(coinAddress);
     }
 
