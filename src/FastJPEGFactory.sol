@@ -246,6 +246,9 @@ contract FastJPEGFactory is Ownable {
 
         require(returnEth <= coinInfo.ethReserve, "Insufficient reserve");
 
+        // Update total coins sold
+        coinInfo.coinsSold -= coinAmount;
+
         // Burn coins
         FJC(coinAddress).burn(msg.sender, coinAmount);
 
@@ -260,8 +263,6 @@ contract FastJPEGFactory is Ownable {
         (bool successSeller,) = msg.sender.call{ value: returnEth }("");
         require(successSeller, "Failed to send Ether");
 
-        // Update total coins sold
-        coinInfo.coinsSold -= coinAmount;
         emit SellCoin(coinAddress, msg.sender, coinAmount, returnEth);
     }
 
