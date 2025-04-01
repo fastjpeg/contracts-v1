@@ -18,6 +18,7 @@ import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title FastJPEGFactory
@@ -364,7 +365,7 @@ contract FastJPEGFactory is Ownable {
         address wethAddress = address(router.WETH());
         address lpCoinAddress = poolFactory.getPair(coinAddress, wethAddress);
         IERC20(lpCoinAddress).approve(address(router), liquidity);
-        IERC20(lpCoinAddress).transfer(BURN_ADDRESS, liquidity);
+        SafeERC20.safeTransfer(IERC20(lpCoinAddress), BURN_ADDRESS, liquidity);
 
         // Transfer ownership to null address
         FJC(coinAddress).renounceOwnership();
