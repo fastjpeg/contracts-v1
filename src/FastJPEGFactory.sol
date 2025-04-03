@@ -87,8 +87,8 @@ contract FastJPEGFactory is Ownable {
 
     // Events
     event NewCoin(address indexed coin, address indexed creator);
-    event BuyCoin(address indexed coin, address indexed buyer, uint256 amount, uint256 ethSpent);
-    event SellCoin(address indexed coin, address indexed seller, uint256 amount, uint256 ethReceived);
+    event BuyCoin(address indexed coin, address indexed buyer, uint256 amount, uint256 ethSpent, uint256 coinsSold, uint256 ethReserve, bool isGraduated);
+    event SellCoin(address indexed coin, address indexed seller, uint256 amount, uint256 ethReceived, uint256 coinsSold, uint256 ethReserve, bool isGraduated);
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
     event GraduateCoin(address indexed coin);
 
@@ -259,7 +259,7 @@ contract FastJPEGFactory is Ownable {
             if (!successRefund) revert FastJPEGFactoryError.FailedToSendETH();
         }
 
-        emit BuyCoin(coinAddress, msg.sender, actualNetCoinsToMint, purchaseEth); // Emit total net coins minted
+        emit BuyCoin(coinAddress, msg.sender, actualNetCoinsToMint, purchaseEth, coinInfo.coinsSold, coinInfo.ethReserve, coinInfo.isGraduated); // Emit total net coins minted
     }
 
     /**
@@ -400,7 +400,7 @@ contract FastJPEGFactory is Ownable {
             revert FastJPEGFactoryError.FailedToSendETH();
         }
 
-        emit SellCoin(coinAddress, msg.sender, coinAmount, returnEth);
+        emit SellCoin(coinAddress, msg.sender, coinAmount, returnEth, coinInfo.coinsSold, coinInfo.ethReserve, coinInfo.isGraduated);
     }
 
     /**

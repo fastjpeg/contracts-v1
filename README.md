@@ -34,7 +34,7 @@ FastJPEG factory address
 feeTo
 
 ```sh
-0xe1AB8145F7E55DC933d51a18c793F901A3A0b276
+0x6476383dccad86f334a8ba19864af116b0a57164
 ```
 
 Foundry consists of:
