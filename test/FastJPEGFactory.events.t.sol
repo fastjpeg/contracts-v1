@@ -32,9 +32,8 @@ contract FastJPEGFactoryTest is Test {
 
     // Events
     event NewCoin(address indexed coin, address indexed creator);
-    event BuyCoin(address indexed coin, address indexed buyer, uint256 amount, uint256 ethSpent);
-    event SellCoin(address indexed coin, address indexed seller, uint256 amount, uint256 ethReceived);
-    event SwapCoin(uint256 amountA, uint256 amountB, uint256 volume, bool isGraduated);
+    event BuyCoin(address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume);
+    event SellCoin(address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume);
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
     event GraduateCoin(address indexed coin);
 
@@ -88,7 +87,7 @@ contract FastJPEGFactoryTest is Test {
 
         // Expect BuyCoin event
         vm.expectEmit(true, true, false, false);
-        emit BuyCoin(coinAddress, user1, EXPECT_ONE_ETH_COIN_AMOUNT, 1 ether);
+        emit BuyCoin(user1, coinAddress, 1000, 1 ether, 1 ether);
         factory.buy{ value: 1 ether }(coinAddress, 0);
 
         vm.stopPrank();
@@ -98,53 +97,8 @@ contract FastJPEGFactoryTest is Test {
     /**
      * @notice Tests that the BuyCoin event is emitted when coins are purchased
      * @dev Verifies the event parameters match the expected coin address, buyer, amount, and ETH spent
-     */
-    function test_BuySwapCoin_Event() public {
-        vm.startPrank(user1);
-
-        // Create coin first
-        address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
-
-        // Expect BuyCoin event
-        vm.expectEmit(true, true, false, false);
-        emit SwapCoin(1000, 1 ether, 1 ether, false);
-        factory.buy{ value: 1 ether }(coinAddress, 0);
-
-        vm.stopPrank();
-    }
-
-    /**
-     * @notice Tests that the SellCoin event is emitted when coins are sold
-     * @dev Verifies the event parameters match the expected coin address, seller, amount, and ETH received
      */
     function test_SellCoin_Event() public {
-        vm.startPrank(user1);
-
-        // Create and buy coins first
-        address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
-        factory.buy{ value: 1 ether }(coinAddress, 0);
-
-        // Get coin instance
-        FJC coin = FJC(coinAddress);
-
-        // Approve factory to sell coins
-        coin.approve(address(factory), coin.balanceOf(user1));
-
-        // Expect SellCoin event
-        vm.expectEmit(true, true, false, false);
-        emit SellCoin(coinAddress, user1, coin.balanceOf(user1), 0.9801 ether);
-        factory.sell(coinAddress, coin.balanceOf(user1), 0.9801 ether);
-
-        vm.stopPrank();
-    }
-
-
-
-    /**
-     * @notice Tests that the BuyCoin event is emitted when coins are purchased
-     * @dev Verifies the event parameters match the expected coin address, buyer, amount, and ETH spent
-     */
-    function test_SellSwapCoin_Event() public {
          vm.startPrank(user1);
 
         // Create and buy coins first
@@ -159,7 +113,7 @@ contract FastJPEGFactoryTest is Test {
 
         // Expect SellCoin event
         vm.expectEmit(true, true, false, false);
-        emit SwapCoin(1000, 1 ether, 1 ether, false);
+        emit SellCoin(user1, coinAddress, 1000, 1 ether, 1 ether);
         factory.sell(coinAddress, coin.balanceOf(user1), 0.9801 ether);
 
         vm.stopPrank();
@@ -224,14 +178,14 @@ contract FastJPEGFactoryTest is Test {
 
         // 2. Buy coins
         vm.expectEmit(true, true, false, false);
-        emit BuyCoin(coinAddress, user1, EXPECT_ONE_ETH_COIN_AMOUNT, 1 ether);
+        emit BuyCoin(user1, coinAddress, EXPECT_ONE_ETH_COIN_AMOUNT, 1 ether, 1 ether);
         factory.buy{ value: 1 ether }(coinAddress, 0);
 
         // 3. Sell coins
         FJC coin = FJC(coinAddress);
         coin.approve(address(factory), coin.balanceOf(user1));
         vm.expectEmit(true, true, false, false);
-        emit SellCoin(coinAddress, user1, coin.balanceOf(user1), 0.9801 ether);
+        emit SellCoin(user1, coinAddress, coin.balanceOf(user1), 0.9801 ether, 0.9801 ether);
         factory.sell(coinAddress, coin.balanceOf(user1), 0.9801 ether);
 
         // 4. Create coin with airdrop

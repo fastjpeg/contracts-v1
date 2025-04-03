@@ -16,6 +16,7 @@ import { FJC } from "./FJC.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -47,7 +48,7 @@ library FastJPEGFactoryError {
  * Implements a bonding curve mechanism for token pricing and a graduation system
  * to transition tokens to Uniswap V2 liquidity pools.
  */
-contract FastJPEGFactory is Ownable {
+contract FastJPEGFactory is Ownable, ReentrancyGuard {
     address public constant BURN_ADDRESS = address(0x000000000000000000000000000000000000dEaD);
     uint256 public constant UNDERGRADUATE_SUPPLY = 800_000_000 * 1e18; // 800M coins with 18 decimals
     uint256 public constant GRADUATE_SUPPLY = 200_000_000 * 1e18; // 200M coins with 18 decimals
@@ -88,22 +89,18 @@ contract FastJPEGFactory is Ownable {
     // Events
     event NewCoin(address indexed coin, address indexed creator);
     event BuyCoin(
+        address indexed sender,
         address indexed coin,
-        address indexed buyer,
-        uint256 amount,
-        uint256 ethSpent
-    );
-    event SellCoin(
-        address indexed coin,
-        address indexed seller,
-        uint256 amount,
-        uint256 ethReceived
-    );
-    event SwapCoin(
         uint256 amountA,
         uint256 amountB,
-        uint256 volume,
-        bool isGraduated
+        uint256 volume
+    );
+    event SellCoin(
+        address indexed sender,
+        address indexed coin,
+        uint256 amountA,
+        uint256 amountB,
+        uint256 volume
     );
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
     event GraduateCoin(address indexed coin);
@@ -276,16 +273,11 @@ contract FastJPEGFactory is Ownable {
         }
 
         emit BuyCoin(
-            coinAddress,
             msg.sender,
-            actualNetCoinsToMint,
-            purchaseEth
-        ); // Emit total net coins minted
-        emit SwapCoin(
+            coinAddress,
             coinInfo.coinsSold,
             coinInfo.ethReserve,
-            actualNetCoinsToMint,
-            coinInfo.isGraduated
+            actualNetCoinsToMint
         );
     }
 
@@ -356,7 +348,7 @@ contract FastJPEGFactory is Ownable {
      * @param coinAmount Amount of coins to sell
      * @param minEthOut Minimum amount of ETH expected
      */
-    function sell(address coinAddress, uint256 coinAmount, uint256 minEthOut) external {
+    function sell(address coinAddress, uint256 coinAmount, uint256 minEthOut) external nonReentrant {
         // Added minEthOut parameter
         CoinInfo storage coinInfo = _getCoinInfo(coinAddress);
         if (coinInfo.isGraduated) {
@@ -428,16 +420,11 @@ contract FastJPEGFactory is Ownable {
         }
 
         emit SellCoin(
-            coinAddress,
             msg.sender,
-            coinAmount,
-            returnEth
-        );
-        emit SwapCoin(
+            coinAddress,
             coinInfo.coinsSold,
             coinInfo.ethReserve,
-            coinAmount,
-            coinInfo.isGraduated
+            coinAmount
         );
     }
 
