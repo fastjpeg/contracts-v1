@@ -93,13 +93,12 @@ contract FastJPEGFactoryTest is Test {
         vm.stopPrank();
     }
 
-
     /**
      * @notice Tests that the BuyCoin event is emitted when coins are purchased
      * @dev Verifies the event parameters match the expected coin address, buyer, amount, and ETH spent
      */
     function test_SellCoin_Event() public {
-         vm.startPrank(user1);
+        vm.startPrank(user1);
 
         // Create and buy coins first
         address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
