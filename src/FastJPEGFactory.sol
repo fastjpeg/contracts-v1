@@ -179,7 +179,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
      * @param coinAddress Address of the coin to buy
      * @param minCoinsOut Minimum amount of coins expected
      */
-    function buy(address coinAddress, uint256 minCoinsOut) external payable {
+    function buy(address coinAddress, uint256 minCoinsOut) external payable nonReentrant {
         address[] memory emptyRecipients = new address[](0);
         _buy(coinAddress, emptyRecipients, 0, minCoinsOut);
     }
