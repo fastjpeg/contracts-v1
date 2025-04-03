@@ -34,6 +34,7 @@ contract FastJPEGFactoryTest is Test {
     event NewCoin(address indexed coin, address indexed creator);
     event BuyCoin(address indexed coin, address indexed buyer, uint256 amount, uint256 ethSpent);
     event SellCoin(address indexed coin, address indexed seller, uint256 amount, uint256 ethReceived);
+    event SwapCoin(uint256 amountA, uint256 amountB, uint256 volume, bool isGraduated);
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
     event GraduateCoin(address indexed coin);
 
@@ -93,6 +94,25 @@ contract FastJPEGFactoryTest is Test {
         vm.stopPrank();
     }
 
+
+    /**
+     * @notice Tests that the BuyCoin event is emitted when coins are purchased
+     * @dev Verifies the event parameters match the expected coin address, buyer, amount, and ETH spent
+     */
+    function test_BuySwapCoin_Event() public {
+        vm.startPrank(user1);
+
+        // Create coin first
+        address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
+
+        // Expect BuyCoin event
+        vm.expectEmit(true, true, false, false);
+        emit SwapCoin(1000, 1 ether, 1 ether, false);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+
+        vm.stopPrank();
+    }
+
     /**
      * @notice Tests that the SellCoin event is emitted when coins are sold
      * @dev Verifies the event parameters match the expected coin address, seller, amount, and ETH received
@@ -113,6 +133,33 @@ contract FastJPEGFactoryTest is Test {
         // Expect SellCoin event
         vm.expectEmit(true, true, false, false);
         emit SellCoin(coinAddress, user1, coin.balanceOf(user1), 0.9801 ether);
+        factory.sell(coinAddress, coin.balanceOf(user1), 0.9801 ether);
+
+        vm.stopPrank();
+    }
+
+
+
+    /**
+     * @notice Tests that the BuyCoin event is emitted when coins are purchased
+     * @dev Verifies the event parameters match the expected coin address, buyer, amount, and ETH spent
+     */
+    function test_SellSwapCoin_Event() public {
+         vm.startPrank(user1);
+
+        // Create and buy coins first
+        address coinAddress = factory.newCoin(coinName, coinSymbol, metadataHash);
+        factory.buy{ value: 1 ether }(coinAddress, 0);
+
+        // Get coin instance
+        FJC coin = FJC(coinAddress);
+
+        // Approve factory to sell coins
+        coin.approve(address(factory), coin.balanceOf(user1));
+
+        // Expect SellCoin event
+        vm.expectEmit(true, true, false, false);
+        emit SwapCoin(1000, 1 ether, 1 ether, false);
         factory.sell(coinAddress, coin.balanceOf(user1), 0.9801 ether);
 
         vm.stopPrank();
