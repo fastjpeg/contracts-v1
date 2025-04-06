@@ -365,19 +365,21 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
             revert FastJPEGFactoryError.InsufficientReserve();
         }
 
-        // Update total coins sold *before* burning to reflect the state change accurately
+        // Update total coins sold - subtract the amount being sold
         coinInfo.coinsSold -= coinAmount;
 
         // Update reserve balance *before* sending ETH
-        coinInfo.ethReserve -= returnEth;
+        coinInfo.ethReserve -= returnEthBeforeFee;
 
         // Send fee to feeTo
         (bool successFeeTo,) = feeTo.call{ value: fee }("");
         if (!successFeeTo) {
             // Revert state changes if fee transfer fails
             coinInfo.ethReserve += returnEth; // Add back returnEth
-            coinInfo.coinsSold += coinAmount; // Add back sold coins
-            revert FastJPEGFactoryError.FailedToSendFee(); // Use specific error
+            coinInfo.coinsSold += coinAmount; // Restore coinsSold
+            // Attempt to refund the fee to the contract (complex, might require feeTo cooperation or state flags)
+            // Reverting here is simpler but leaves fee potentially lost if feeTo received it.
+            revert FastJPEGFactoryError.FailedToSendFee();
         }
 
         // Burn coins *after* state updates and fee transfer, *before* sending ETH to seller
@@ -395,7 +397,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
             // Note: This revert might not be ideal as the fee has been sent.
             // Consider alternative recovery mechanisms if needed.
             coinInfo.ethReserve += returnEth; // Add back returnEth sent to seller (which failed)
-            coinInfo.coinsSold += coinAmount; // Add back burned coins
+            coinInfo.coinsSold += coinAmount; // Restore coinsSold
             // Attempt to refund the fee to the contract (complex, might require feeTo cooperation or state flags)
             // Reverting here is simpler but leaves fee potentially lost if feeTo received it.
             revert FastJPEGFactoryError.FailedToSendETH();
