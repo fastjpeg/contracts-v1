@@ -37,65 +37,11 @@ feeTo
 0x6476383dccad86f334a8ba19864af116b0a57164
 ```
 
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/FastJPEGFactory.s.sol:FastJPEGFactoryScript --rpc-url anvil --broadcast --verify -vvvv --sender 0x0000000000000000000000000000000000000000
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+### Verify Contract
+```sh
+forge verify-contract --rpc-url "https://lb.drpc.org/ogrpc?network=sepolia&dkey=AmRKOjzeAU1HukkCkUA3_r8yxoJD_FgR75-snqSgS7QB" \
+  --etherscan-api-key $ETHERSCAN_API_KEY_SEPOLIA \
+  0xcAfe5f609AFD116cB3AF6b37B0781a86A0F12F9D \
+  src/FastJPEGFactory.sol:FastJPEGFactory \
+  --watch
 ```
