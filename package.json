@@ -7,9 +7,8 @@
     "deploy": "forge script script/AnvilFastJPEGFactory.s.sol:AnvilFastJPEGFactory --rpc-url http://localhost:8545 --broadcast",
     "abi": "forge build --silent && jq '.abi' ./out/FastJPEGFactory.sol/FastJPEGFactory.json",
     "build": "rm -rf ./out; forge build",
-    "deploy-sepolia": "forge script --ledger script/SepoliaFastJPEGFactory.s.sol --rpc-url \"https://lb.drpc.org/ogrpc?network=sepolia&dkey=AmRKOjzeAU1HukkCkUA3_r8yxoJD_FgR75-snqSgS7QB\" --broadcast -vvvv",
-    "deploy-base": "forge script --ledger script/SepoliaFastJPEGFactory.s.sol --rpc-url \"https://lb.drpc.org/ogrpc?network=base&dkey=AmRKOjzeAU1HukkCkUA3_r8yxoJD_FgR75-snqSgS7QB\" --broadcast -vvvv"
-
+    "deploy-sepolia": "forge script --ledger script/SepoliaFastJPEGFactory.s.sol --rpc-url \"https://lb.drpc.org/ogrpc?network=sepolia&dkey=AmRKOjzeAU1HukkCkUA3_r8yxoJD_FgR75-snqSgS7QB\" --etherscan-api-key $ETHERSCAN_API_KEY_SEPOLIA --verify --broadcast -vvvv",
+    "deploy-base": "forge script --ledger script/SepoliaFastJPEGFactory.s.sol --rpc-url \"https://lb.drpc.org/ogrpc?network=base&dkey=AmRKOjzeAU1HukkCkUA3_r8yxoJD_FgR75-snqSgS7QB\" --etherscan-api-key $ETHERSCAN_API_KEY_BASE --verify --broadcast -vvvv"
   },
   "devDependencies": {
     "@types/bun": "latest"
