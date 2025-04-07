@@ -25,11 +25,12 @@ contract FastJPEGFactoryAirdropTest is Test {
     // Test users
     address public owner;
     address public creator;
+    address public feeTo;
     address public user1;
     address public user2;
     address public user3;
     address public user4;
-    address public feeTo;
+    address public user5;
 
     // Events
     event NewCoin(address indexed coin, address indexed creator);
@@ -42,11 +43,12 @@ contract FastJPEGFactoryAirdropTest is Test {
         // Initialize test users with different addresses
         owner = address(this);
         creator = vm.addr(1);
-        user1 = vm.addr(2);
-        user2 = vm.addr(3);
-        user3 = vm.addr(4);
-        user4 = vm.addr(5);
-        feeTo = vm.addr(6);
+        feeTo = vm.addr(2);
+        user1 = vm.addr(3);
+        user2 = vm.addr(4);
+        user3 = vm.addr(5);
+        user4 = vm.addr(6);
+        user5 = vm.addr(7);
 
         AnvilFastJPEGFactory script = new AnvilFastJPEGFactory();
         script.test();
@@ -60,6 +62,7 @@ contract FastJPEGFactoryAirdropTest is Test {
         vm.deal(user2, 100 ether);
         vm.deal(user3, 100 ether);
         vm.deal(user4, 100 ether);
+        vm.deal(user5, 100 ether);
         vm.deal(feeTo, 0 ether);
     }
 
@@ -200,8 +203,8 @@ contract FastJPEGFactoryAirdropTest is Test {
         recipients[0] = user1;
         recipients[1] = user2;
         recipients[2] = user3;
-        recipients[3] = address(0x10);
-        recipients[4] = address(0x11);
+        recipients[3] = user4;
+        recipients[4] = user5;
 
         uint256 airdropPercentage = 2500; // 25%
 
@@ -251,5 +254,76 @@ contract FastJPEGFactoryAirdropTest is Test {
         assertEq(coin.balanceOf(user1), user1BalanceAfterAirdrop);
         // User2 should have received some coins
         assertTrue(coin.balanceOf(user2) > 0, "User2 should have received coins from buying");
+    }
+
+    function test_airdropDistributionAllRecipientsSell() public {
+        address[] memory recipients = new address[](5);
+        recipients[0] = user1;
+        recipients[1] = user2;
+        recipients[2] = user3;
+        recipients[3] = user4;
+        recipients[4] = user5;
+
+        uint256 airdropPercentage = 2500; // 25%
+
+        vm.startPrank(creator);
+        address coinAddress = factory.newCoinAirdrop{ value: 2 ether }(
+            "DistributionCoin", "DIST", recipients, airdropPercentage, metadataHash
+        );
+        vm.stopPrank();
+
+        FJC coin = FJC(coinAddress);
+
+        uint256 expectedAirdropAmount = (factory.UNDERGRADUATE_SUPPLY() * airdropPercentage) / factory.BPS_DENOMINATOR();
+        uint256 expectedPerRecipient = expectedAirdropAmount / recipients.length;
+
+        // Check that each recipient got the same amount
+        assertApproxEqRel(coin.balanceOf(recipients[0]), expectedPerRecipient, 0.01e18);
+        assertApproxEqRel(coin.balanceOf(recipients[1]), expectedPerRecipient, 0.01e18);
+        assertApproxEqRel(coin.balanceOf(recipients[2]), expectedPerRecipient, 0.01e18);
+        assertApproxEqRel(coin.balanceOf(recipients[3]), expectedPerRecipient, 0.01e18);
+        assertApproxEqRel(coin.balanceOf(recipients[4]), expectedPerRecipient, 0.01e18);
+
+        vm.startPrank(creator);
+        uint256 creatorBalance = coin.balanceOf(creator);
+        factory.sell(coinAddress, creatorBalance, 0);
+        assertEq(coin.balanceOf(creator), 0);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        uint256 user1Balance = coin.balanceOf(user1);
+        factory.sell(coinAddress, user1Balance, 0);
+        assertEq(coin.balanceOf(user1), 0);
+
+        vm.stopPrank();
+        vm.startPrank(user2);
+        uint256 user2Balance = coin.balanceOf(user2);
+        factory.sell(coinAddress, user2Balance, 0);
+        assertEq(coin.balanceOf(user2), 0);
+        vm.stopPrank();
+
+        vm.startPrank(user3);
+        uint256 user3Balance = coin.balanceOf(user3);
+        factory.sell(coinAddress, user3Balance, 0);
+        assertEq(coin.balanceOf(user3), 0);
+        vm.stopPrank();
+
+        vm.startPrank(user4);
+        uint256 user4Balance = coin.balanceOf(user4);
+        factory.sell(coinAddress, user4Balance, 0);
+        assertEq(coin.balanceOf(user4), 0);
+        vm.stopPrank();
+
+        vm.startPrank(user5);
+        uint256 user5Balance = coin.balanceOf(user5);
+        factory.sell(coinAddress, user5Balance, 0);
+        assertEq(coin.balanceOf(user5), 0);
+        vm.stopPrank();
+
+        (,,, uint256 ethReserve, uint256 coinsSold,,) = factory.coins(coinAddress);
+        assertEq(coinsSold, 0, "Coins sold should be 0");
+        assertEq(ethReserve, 1 wei, "ETH reserve should be 1 wei");
+
+        assertEq(feeTo.balance, 0.039799999999999999 ether, "FeeTo should have 0.039799999999999999 ether");
     }
 }

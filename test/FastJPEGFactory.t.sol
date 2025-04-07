@@ -392,7 +392,7 @@ contract FastJPEGFactoryTest is Test {
 
         // Check that the factory's ETH reserve for this coin is 0
         (,,, uint256 ethReserve, uint256 coinsSold,, bool isGraduated) = factory.coins(coinAddress);
-        assertEq(ethReserve, 1, "Factory should have 1 wei reserve for the coin (Jeevans Gift)");
+        assertEq(ethReserve, 1 wei, "Factory should have 1 wei reserve for the coin (Jeevans Gift)");
         assertEq(coinsSold, 0, "Factory should have 0 coins sold");
         assertFalse(isGraduated, "Coin should not be graduated");
     }
