@@ -32,7 +32,7 @@ contract FastJPEGFactoryTest is Test {
 
     // Events
     event NewCoin(address indexed coin, address indexed creator);
-    event SwapEvent(address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume);
+    event SwapCoin(address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume);
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
     event GraduateCoin(address indexed coin);
 
@@ -86,7 +86,7 @@ contract FastJPEGFactoryTest is Test {
 
         // Expect BuyCoin event
         vm.expectEmit(true, true, false, false);
-        emit SwapEvent(user1, coinAddress, 1000, 1 ether, 1 ether);
+        emit SwapCoin(user1, coinAddress, 1000, 1 ether, 1 ether);
         factory.buy{ value: 1 ether }(coinAddress, 0);
 
         vm.stopPrank();
@@ -111,7 +111,7 @@ contract FastJPEGFactoryTest is Test {
 
         // Expect SellCoin event
         vm.expectEmit(true, true, false, false);
-        emit SwapEvent(user1, coinAddress, 1000, 1 ether, 1 ether);
+        emit SwapCoin(user1, coinAddress, 1000, 1 ether, 1 ether);
         factory.sell(coinAddress, coin.balanceOf(user1), 0.9801 ether);
 
         vm.stopPrank();
@@ -176,14 +176,14 @@ contract FastJPEGFactoryTest is Test {
 
         // 2. Buy coins
         vm.expectEmit(true, true, false, false);
-        emit SwapEvent(user1, coinAddress, EXPECT_ONE_ETH_COIN_AMOUNT, 1 ether, 1 ether);
+        emit SwapCoin(user1, coinAddress, EXPECT_ONE_ETH_COIN_AMOUNT, 1 ether, 1 ether);
         factory.buy{ value: 1 ether }(coinAddress, 0);
 
         // 3. Sell coins
         FJC coin = FJC(coinAddress);
         coin.approve(address(factory), coin.balanceOf(user1));
         vm.expectEmit(true, true, false, false);
-        emit SwapEvent(user1, coinAddress, coin.balanceOf(user1), 0.9801 ether, 0.9801 ether);
+        emit SwapCoin(user1, coinAddress, coin.balanceOf(user1), 0.9801 ether, 0.9801 ether);
         factory.sell(coinAddress, coin.balanceOf(user1), 0.9801 ether);
 
         // 4. Create coin with airdrop

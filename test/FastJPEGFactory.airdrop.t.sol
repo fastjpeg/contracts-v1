@@ -34,7 +34,7 @@ contract FastJPEGFactoryAirdropTest is Test {
 
     // Events
     event NewCoin(address indexed coin, address indexed creator);
-    event SwapEvent(address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume);
+    event SwapCoin(address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume);
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
     event GraduateCoin(address indexed coin);
 
