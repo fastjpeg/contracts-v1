@@ -86,9 +86,16 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
 
     mapping(address => CoinInfo) public coins;
 
+    enum Side {
+        Buy,
+        Sell
+    }
+
     // Events
     event NewCoin(address indexed coin, address indexed creator);
-    event SwapCoin(address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume);
+    event SwapCoin(
+        address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume, Side side
+    );
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
     event GraduateCoin(address indexed coin);
 
@@ -259,7 +266,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
             if (!successRefund) revert FastJPEGFactoryError.FailedToSendETH();
         }
 
-        emit SwapCoin(msg.sender, coinAddress, coinInfo.coinsSold, coinInfo.ethReserve, actualNetCoinsToMint);
+        emit SwapCoin(msg.sender, coinAddress, coinInfo.coinsSold, coinInfo.ethReserve, actualNetCoinsToMint, Side.Buy);
     }
 
     /**
@@ -402,7 +409,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
             revert FastJPEGFactoryError.FailedToSendETH();
         }
 
-        emit SwapCoin(msg.sender, coinAddress, coinInfo.coinsSold, coinInfo.ethReserve, coinAmount);
+        emit SwapCoin(msg.sender, coinAddress, coinInfo.coinsSold, coinInfo.ethReserve, coinAmount, Side.Sell);
     }
 
     /**
