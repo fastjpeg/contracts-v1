@@ -30,11 +30,16 @@ contract FastJPEGFactoryTest is Test {
     address public user4;
     address public feeTo;
 
-    enum Side { Buy, Sell }
+    enum Side {
+        Buy,
+        Sell
+    }
 
     // Events
     event NewCoin(address indexed coin, address indexed creator);
-    event SwapCoin(address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume, Side side);
+    event SwapCoin(
+        address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume, Side side
+    );
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
     event GraduateCoin(address indexed coin);
 
