@@ -99,10 +99,10 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_calculateSaleReturn() public view {
         uint256 priceFor100Coins = factory.calculateSaleReturn(100_000_000 * 1e18, 400_000_000 * 1e18);
-        assertEq(priceFor100Coins, 1.159375000000000000 ether);
+        assertEq(priceFor100Coins, 1.159375 ether);
 
         uint256 priceFor200Coins = factory.calculateSaleReturn(200_000_000 * 1e18, 400_000_000 * 1e18);
-        assertEq(priceFor200Coins, 1.987500000000000000 ether);
+        assertEq(priceFor200Coins, 1.9875 ether);
 
         uint256 priceFor300Coins = factory.calculateSaleReturn(800_000_000 * 1e18, 800_000_000 * 1e18);
         assertEq(priceFor300Coins, 10.6 ether);
@@ -409,7 +409,6 @@ contract FastJPEGFactoryTest is Test {
         factory.buy{ value: 1 ether }(coinAddress, 0);
 
         uint256 coinBalance = FJC(coinAddress).balanceOf(user1);
-        console.log("coinBalance", coinBalance);
         factory.sell(coinAddress, coinBalance, 0 ether);
         vm.stopPrank();
 
@@ -424,6 +423,6 @@ contract FastJPEGFactoryTest is Test {
 
     function test_CalculateEthToGraduateBeforeFee() public view {
         assertEq(factory.calcualteEthToGraduateBeforeFee(1 ether), 1.010101010101010101 ether);
-        assertEq(factory.calcualteEthToGraduateBeforeFee(10.6 ether), 10.707070707070707070 ether);
+        assertEq(factory.calcualteEthToGraduateBeforeFee(10.6 ether), 10.70707070707070707 ether);
     }
 }
