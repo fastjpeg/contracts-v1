@@ -164,7 +164,7 @@ contract FastJPEGFactoryTest is Test {
         emit GraduateCoin(EXPECT_COIN_ADDRESS, address(0));
 
         // Buy enough coins to trigger graduation (10 ETH)
-        factory.buy{ value: 10 ether }(coinAddress, 0);
+        factory.buy{ value: 10.8 ether }(coinAddress, 0);
 
         vm.stopPrank();
     }
