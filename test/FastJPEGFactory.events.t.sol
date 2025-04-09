@@ -41,7 +41,7 @@ contract FastJPEGFactoryTest is Test {
         address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume, Side side
     );
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
-    event GraduateCoin(address indexed coin);
+    event GraduateCoin(address indexed coin, address indexed pool);
 
     function setUp() public {
         // Initialize test users with different addresses
@@ -161,7 +161,7 @@ contract FastJPEGFactoryTest is Test {
 
         // Expect GraduateCoin event
         vm.expectEmit(true, false, false, false);
-        emit GraduateCoin(EXPECT_COIN_ADDRESS);
+        emit GraduateCoin(EXPECT_COIN_ADDRESS, address(0));
 
         // Buy enough coins to trigger graduation (10 ETH)
         factory.buy{ value: 10 ether }(coinAddress, 0);
@@ -205,7 +205,7 @@ contract FastJPEGFactoryTest is Test {
 
         // 5. Graduate coin
         vm.expectEmit(true, false, false, false);
-        emit GraduateCoin(EXPECT_AIRDROP_COIN_ADDRESS);
+        emit GraduateCoin(EXPECT_AIRDROP_COIN_ADDRESS, address(0));
         factory.buy{ value: 10 ether }(EXPECT_AIRDROP_COIN_ADDRESS, 0);
 
         vm.stopPrank();
