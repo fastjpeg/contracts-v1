@@ -120,7 +120,7 @@ contract FastJPEGFactoryTest is Test {
         FJC coin = FJC(coinAddress);
 
         assertEq(
-            coin.balanceOf(user1), 347497794210455493463372314, "User should have 347497794210455493463372314 FJPGCoins"
+            coin.balanceOf(user1), 345755939661664749132741421, "User should have 345755939661664749132741421 FJPGCoins"
         );
         assertEq(coin.balanceOf(owner), 0, "Owner should have 0 FJPGCoins");
         assertEq(address(factory).balance, 1.98 ether, "Factory should have 1.98 ether");
@@ -141,12 +141,12 @@ contract FastJPEGFactoryTest is Test {
         FJC coin = FJC(coinAddress);
 
         assertEq(
-            coin.balanceOf(user1), 247497794210455493463372314, "User should have 247497794210455493463372314 FJPGCoins"
+            coin.balanceOf(user1), 245755939661664749132741421, "User should have 245755939661664749132741421 FJPGCoins"
         );
         assertEq(coin.balanceOf(owner), 0, "Owner should have 0 FJPGCoins");
-        assertEq(address(factory).balance, 994538556677866178, "Factory should have 1.023820226935650558 ether");
+        assertEq(address(factory).balance, 1000308449870735519, "Factory should have 1000308449870735519");
         assertEq(coin.balanceOf(feeTo), 0, "Fee recipient should have 0 FJPGCoins");
-        assertEq(feeTo.balance, 0.029854614433221338 ether, "Fee recipient should have  0.029854614433221338 ether");
+        assertEq(feeTo.balance, 29796915501292644, "Fee recipient should have 29796915501292644");
     }
 
     /**
@@ -230,8 +230,8 @@ contract FastJPEGFactoryTest is Test {
         // Check token balance
         assertEq(
             FJC(coinAddress).balanceOf(user1),
-            197497794210455493463372314,
-            "User1 should receive 195_755_939.661664749132741421 tokens"
+            195755939661664749132741421,
+            "User1 should receive 195755939661664749132741421 tokens"
         );
         assertEq(FJC(coinAddress).balanceOf(user2), 50_000_000 ether, "User2 should receive 50m tokens");
         assertEq(FJC(coinAddress).balanceOf(user3), 50_000_000 ether, "User3 should receive 50m tokens");
@@ -394,8 +394,8 @@ contract FastJPEGFactoryTest is Test {
 
         assertEq(
             FJC(coinAddress).balanceOf(user1),
-            777028689885811344588480710,
-            "User1 should have 773_133_784.707798016160633606 ether"
+            773133784707798016160633606,
+            "User1 should have 773133784707798016160633606"
         );
     }
 

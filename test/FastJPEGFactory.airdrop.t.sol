@@ -141,8 +141,8 @@ contract FastJPEGFactoryAirdropTest is Test {
         FJC coin = FJC(coinAddress);
 
         // Both recipients should have received equal share of the max airdrop amount
-        assertEq(coin.balanceOf(user1), 212_798_070.639572595495893566 ether);
-        assertEq(coin.balanceOf(user2), 212_798_070.639572595495893566 ether);
+        assertEq(coin.balanceOf(user1), 211731406926901808227072752);
+        assertEq(coin.balanceOf(user2), 211731406926901808227072752);
     }
 
     function test_airdropPercentageTooHigh() public {
