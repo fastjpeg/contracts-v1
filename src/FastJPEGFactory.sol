@@ -211,7 +211,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
 
         uint256 purchaseEth = msg.value;
         uint256 remainingEthForGraduation = GRADUATE_ETH - coinInfo.ethReserve;
-        uint256 ethToGraduateBeforeFee = calcualteEthToGraduateBeforeFee(remainingEthForGraduation);
+        uint256 ethToGraduateBeforeFee = calculateEthToGraduateBeforeFee(remainingEthForGraduation);
         uint256 fee = (msg.value * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
         uint256 coinsToMint = calculatePurchaseAmount(purchaseEth - fee, coinInfo.coinsSold);
         uint256 refundEth = 0;
@@ -459,7 +459,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         return calculatePriceForCoins(coinAmount, currentSupply - coinAmount);
     }
 
-    function calcualteEthToGraduateBeforeFee(uint256 ethAmount) public pure returns (uint256) {
+    function calculateEthToGraduateBeforeFee(uint256 ethAmount) public pure returns (uint256) {
         return ethAmount * 10000 / 9900;
     }
 

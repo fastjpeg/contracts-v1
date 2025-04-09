@@ -422,7 +422,7 @@ contract FastJPEGFactoryTest is Test {
     }
 
     function test_CalculateEthToGraduateBeforeFee() public view {
-        assertEq(factory.calcualteEthToGraduateBeforeFee(1 ether), 1.010101010101010101 ether);
-        assertEq(factory.calcualteEthToGraduateBeforeFee(10.6 ether), 10.70707070707070707 ether);
+        assertEq(factory.calculateEthToGraduateBeforeFee(1 ether), 1.010101010101010101 ether);
+        assertEq(factory.calculateEthToGraduateBeforeFee(10.6 ether), 10.70707070707070707 ether);
     }
 }
