@@ -6,6 +6,7 @@ import { FastJPEGFactory, FJC, FastJPEGFactoryError } from "../src/FastJPEGFacto
 import { IERC20 } from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IUniswapV2Factory } from "../lib/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import { IUniswapV2Router02 } from "../lib/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import { IUniswapV2Pair } from "../lib/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import { WETH } from "../lib/solmate/src/tokens/WETH.sol";
 import { AnvilFastJPEGFactory } from "../script/AnvilFastJPEGFactory.s.sol";
 
@@ -74,20 +75,23 @@ contract FastJPEGFactoryTest is Test {
      * @dev Tests the coin purchase amount calculation for various ETH inputs
      */
     function test_calculatePurchaseAmount() public view {
-        uint256 coinsToMint1Ether = factory.calculatePurchaseAmount(2 ether, 0);
-        assertEq(coinsToMint1Ether, 357_770_876.399966351425467786 ether);
+        uint256 coinsToMint2Ether = factory.calculatePurchaseAmount(2 ether, 0);
+        assertEq(coinsToMint2Ether, 347_497_794.210455493463372314 ether);
 
-        uint256 coinsToMint2Ether = factory.calculatePurchaseAmount(4 ether, 0);
-        assertEq(coinsToMint2Ether, 505_964_425.626940693119822967 ether);
+        uint256 coinsToMint4Ether = factory.calculatePurchaseAmount(4 ether, 0);
+        assertEq(coinsToMint4Ether, 491_436_093.467160947542732555 ether);
 
-        uint256 coinsToMint3Ether = factory.calculatePurchaseAmount(6 ether, 0);
-        assertEq(coinsToMint3Ether, 619_677_335.393186701628682463 ether);
+        uint256 coinsToMint6Ether = factory.calculatePurchaseAmount(6 ether, 0);
+        assertEq(coinsToMint6Ether, 601_883_835.090622969968018676 ether);
 
-        uint256 coinsToMint4Ether = factory.calculatePurchaseAmount(8 ether, 0);
-        assertEq(coinsToMint4Ether, 715_541_752.799932702850935573 ether);
+        uint256 coinsToMint8Ether = factory.calculatePurchaseAmount(8 ether, 0);
+        assertEq(coinsToMint8Ether, 694_995_588.420910986926744629 ether);
 
-        uint256 coinsToMint5Ether = factory.calculatePurchaseAmount(10 ether, 0);
-        assertEq(coinsToMint5Ether, 800_000_000 ether);
+        uint256 coinsToMint10Ether = factory.calculatePurchaseAmount(10 ether, 0);
+        assertEq(coinsToMint10Ether, 777_028_689.885811344588480714 ether);
+
+        uint256 coinsToMint106Ether = factory.calculatePurchaseAmount(10.6 ether, 0);
+        assertEq(coinsToMint106Ether, 800_000_000 ether);
     }
 
     /**
@@ -95,13 +99,13 @@ contract FastJPEGFactoryTest is Test {
      */
     function test_calculateSaleReturn() public view {
         uint256 priceFor100Coins = factory.calculateSaleReturn(100_000_000 * 1e18, 400_000_000 * 1e18);
-        assertEq(priceFor100Coins, 1.09375 ether);
+        assertEq(priceFor100Coins, 1.159375000000000000 ether);
 
         uint256 priceFor200Coins = factory.calculateSaleReturn(200_000_000 * 1e18, 400_000_000 * 1e18);
-        assertEq(priceFor200Coins, 1.875 ether);
+        assertEq(priceFor200Coins, 1.987500000000000000 ether);
 
         uint256 priceFor300Coins = factory.calculateSaleReturn(800_000_000 * 1e18, 800_000_000 * 1e18);
-        assertEq(priceFor300Coins, 10 ether);
+        assertEq(priceFor300Coins, 10.6 ether);
     }
 
     /**
@@ -116,7 +120,7 @@ contract FastJPEGFactoryTest is Test {
         FJC coin = FJC(coinAddress);
 
         assertEq(
-            coin.balanceOf(user1), 355977527380591821538147077, "User should have 355977527380591821538147077 FJPGCoins"
+            coin.balanceOf(user1), 347497794210455493463372314, "User should have 347497794210455493463372314 FJPGCoins"
         );
         assertEq(coin.balanceOf(owner), 0, "Owner should have 0 FJPGCoins");
         assertEq(address(factory).balance, 1.98 ether, "Factory should have 1.98 ether");
@@ -137,12 +141,12 @@ contract FastJPEGFactoryTest is Test {
         FJC coin = FJC(coinAddress);
 
         assertEq(
-            coin.balanceOf(user1), 255977527380591821538147077, "User should have 255977527380591821538147077 FJPGCoins"
+            coin.balanceOf(user1), 247497794210455493463372314, "User should have 247497794210455493463372314 FJPGCoins"
         );
         assertEq(coin.balanceOf(owner), 0, "Owner should have 0 FJPGCoins");
-        assertEq(address(factory).balance, 1.023820226935650558 ether, "Factory should have 1.023820226935650558 ether");
+        assertEq(address(factory).balance, 994538556677866178, "Factory should have 1.023820226935650558 ether");
         assertEq(coin.balanceOf(feeTo), 0, "Fee recipient should have 0 FJPGCoins");
-        assertEq(feeTo.balance, 0.029561797730643494 ether, "Fee recipient should have  0.029561797730643494 ether");
+        assertEq(feeTo.balance, 0.029854614433221338 ether, "Fee recipient should have  0.029854614433221338 ether");
     }
 
     /**
@@ -226,8 +230,8 @@ contract FastJPEGFactoryTest is Test {
         // Check token balance
         assertEq(
             FJC(coinAddress).balanceOf(user1),
-            205_977_527.380591821538147077 ether,
-            "User1 should receive 205_977_527 tokens"
+            197497794210455493463372314,
+            "User1 should receive 195_755_939.661664749132741421 tokens"
         );
         assertEq(FJC(coinAddress).balanceOf(user2), 50_000_000 ether, "User2 should receive 50m tokens");
         assertEq(FJC(coinAddress).balanceOf(user3), 50_000_000 ether, "User3 should receive 50m tokens");
@@ -311,7 +315,7 @@ contract FastJPEGFactoryTest is Test {
     function test_graduateTokenOnTenETH() public {
         vm.startPrank(user1);
         address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
-        factory.buy{ value: 10 ether }(coinAddress, 0);
+        factory.buy{ value: 10.8 ether }(coinAddress, 0);
         vm.stopPrank();
 
         (,,,,,, bool isGraduated) = factory.coins(coinAddress);
@@ -340,7 +344,7 @@ contract FastJPEGFactoryTest is Test {
         );
         assertEq(
             IERC20(lpTokenAddress).balanceOf(address(0x000000000000000000000000000000000000dEaD)),
-            43127717305695649348467,
+            44721359549995793927183,
             "LP tokens should be owned by 0xdead address"
         );
 
@@ -348,6 +352,26 @@ contract FastJPEGFactoryTest is Test {
         // - it takes 5 ETH tdo get to graduate to Aerodrome
         // - 0.1 ETH is paid to Token Creator (Creator Incentive)
         // - 0.5 ETH is paid to FastJPEGFactory owner (Migration Fee)
+    }
+
+    function test_graduateToken_VeirfyLiquiityPool() public {
+        vm.startPrank(user1);
+        address coinAddress = factory.newCoin(coinName, coinSymbol, testMetadataHash);
+        factory.buy{ value: 100 ether }(coinAddress, 0);
+        vm.stopPrank();
+
+        (,,,,,, bool isGraduated) = factory.coins(coinAddress);
+        assertEq(isGraduated, true, "Token should be graduated");
+
+        (,, address poolAddress, uint256 ethReserve, uint256 coinsSold,,) = factory.coins(coinAddress);
+
+        assertEq(ethReserve, 10.6 ether, "ETH reserve should be 10.6 ether");
+        assertEq(coinsSold, 800_000_000 ether, "Coins sold should be 800_000_000 ether");
+
+        IUniswapV2Pair pair = IUniswapV2Pair(poolAddress);
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+        assertEq(reserve0, 10 ether, "WETH reserve should be 10 ether");
+        assertEq(reserve1, 200_000_000 ether, "Coin reserve should be 200_000_000 ether");
     }
 
     /**
@@ -370,9 +394,9 @@ contract FastJPEGFactoryTest is Test {
 
         assertEq(
             FJC(coinAddress).balanceOf(user1),
-            795_989_949.685295963787583854 ether,
-            "User1 should have 795_989_949 ether"
-        ); // 357_770_876
+            777028689885811344588480710,
+            "User1 should have 773_133_784.707798016160633606 ether"
+        );
     }
 
     function test_fiveBuysThenSellEverything() public {
@@ -385,6 +409,7 @@ contract FastJPEGFactoryTest is Test {
         factory.buy{ value: 1 ether }(coinAddress, 0);
 
         uint256 coinBalance = FJC(coinAddress).balanceOf(user1);
+        console.log("coinBalance", coinBalance);
         factory.sell(coinAddress, coinBalance, 0 ether);
         vm.stopPrank();
 
@@ -395,5 +420,10 @@ contract FastJPEGFactoryTest is Test {
         assertEq(ethReserve, 1 wei, "Factory should have 1 wei reserve for the coin (Jeevans Gift)");
         assertEq(coinsSold, 0, "Factory should have 0 coins sold");
         assertFalse(isGraduated, "Coin should not be graduated");
+    }
+
+    function test_CalculateEthToGraduateBeforeFee() public view {
+        assertEq(factory.calcualteEthToGraduateBeforeFee(1 ether), 1.010101010101010101 ether);
+        assertEq(factory.calcualteEthToGraduateBeforeFee(10.6 ether), 10.707070707070707070 ether);
     }
 }

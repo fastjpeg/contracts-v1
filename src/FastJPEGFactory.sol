@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-// import { console } from "forge-std/console.sol";
+import { console } from "forge-std/console.sol";
 import { FJC } from "./FJC.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
@@ -56,7 +56,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
     // Remove fixed AIRDROP_SUPPLY and add max airdrop percentage
     uint256 public constant MAX_AIRDROP_PERCENTAGE_BPS = 10000; // 100% maximum airdrop
 
-    uint256 public constant GRADUATE_ETH = 10 ether; // 10 ETH to graduate coin
+    uint256 public constant GRADUATE_ETH = 10.6 ether; // 10.6 ETH to graduate coin
 
     uint256 public constant UNDERGRADUATE_FEE_BPS = 100; // 1% fee
     uint256 public constant BPS_DENOMINATOR = 10000; // 100% = 10000 BPS
@@ -209,27 +209,25 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         if (msg.value == 0) revert FastJPEGFactoryError.MustSendETH();
         if (coinInfo.coinsSold >= UNDERGRADUATE_SUPPLY) revert FastJPEGFactoryError.MaxSupplyReached();
 
-        // --- Calculate ETH amounts and potential refund ---
         uint256 purchaseEth = msg.value;
+        uint256 remainingEthForGraduation = GRADUATE_ETH - coinInfo.ethReserve;
+        uint256 ethToGraduateBeforeFee = calcualteEthToGraduateBeforeFee(remainingEthForGraduation);
+        uint256 coinsToMint =  calculatePurchaseAmount(purchaseEth, coinInfo.coinsSold);
         uint256 refundEth = 0;
-        if (coinInfo.ethReserve + msg.value > GRADUATE_ETH) {
-            purchaseEth = GRADUATE_ETH - coinInfo.ethReserve;
+        uint256 fee = (msg.value * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
+
+        bool reachedGraduation = purchaseEth > ethToGraduateBeforeFee;
+        if (reachedGraduation) {
+            purchaseEth = ethToGraduateBeforeFee;
+            fee = purchaseEth - remainingEthForGraduation;
             refundEth = msg.value - purchaseEth;
+            coinsToMint = UNDERGRADUATE_SUPPLY - coinInfo.coinsSold;
         }
 
-        // --- Calculate fee and net ETH ---
-        uint256 fee = (purchaseEth * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
-        uint256 ethAfterFee = purchaseEth - fee;
-
-        // --- Calculate potential coins and apply supply cap ---
-        uint256 potentialNetCoins = calculatePurchaseAmount(ethAfterFee, coinInfo.coinsSold);
-        uint256 remainingSupply = UNDERGRADUATE_SUPPLY - coinInfo.coinsSold;
-        uint256 actualNetCoinsToMint = Math.min(potentialNetCoins, remainingSupply);
-
-        // --- Handle Airdrop Distribution & Slippage Check ---
+        // // --- Handle Airdrop Distribution & Slippage Check ---
         (uint256 buyerCoins, uint256 airdroppedCoins) = _handleAirdrop(
             coinAddress,
-            actualNetCoinsToMint,
+            coinsToMint,
             airdropRecipients,
             airdropPercentageBps,
             minCoinsOut // Pass buyer's minimum expectation
@@ -246,27 +244,23 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
             coinInfo.coinsSold += buyerCoins; // Update state for buyer coins
         }
 
-        // --- Final State Update: Graduation or Fee Payment ---
-        bool reachedGraduation = coinInfo.ethReserve + purchaseEth >= GRADUATE_ETH; // Check if the purchase *would* reach graduation
-
+        coinInfo.ethReserve +=  purchaseEth - fee;
         if (reachedGraduation) {
             // Ensure reserve doesn't exceed GRADUATE_ETH before calling graduate
-            // The purchaseEth might be less than msg.value if capped at GRADUATE_ETH
-            coinInfo.ethReserve = GRADUATE_ETH;
             _graduateCoin(coinAddress, fee); // Fee passed to graduate function
         } else {
             // Send fee if not graduating
             (bool successFeeTo,) = feeTo.call{ value: fee }("");
             if (!successFeeTo) revert FastJPEGFactoryError.FailedToSendFee();
-            coinInfo.ethReserve += ethAfterFee; // Update reserve only if not graduating
         }
+
         // --- Handle ETH Refund ---
         if (refundEth > 0) {
             (bool successRefund,) = msg.sender.call{ value: refundEth }("");
             if (!successRefund) revert FastJPEGFactoryError.FailedToSendETH();
         }
 
-        emit SwapCoin(msg.sender, coinAddress, coinInfo.coinsSold, coinInfo.ethReserve, actualNetCoinsToMint, Side.Buy);
+        emit SwapCoin(msg.sender, coinAddress, coinInfo.coinsSold, coinInfo.ethReserve, coinsToMint, Side.Buy);
     }
 
     /**
@@ -357,6 +351,11 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
 
         // Calculate ETH to return based on the bonding curve
         uint256 returnEthBeforeFee = calculateSaleReturn(coinAmount, currentSupply);
+        console.log("currentSupply", currentSupply);
+        console.log("coinAmount", coinAmount);
+        console.log("returnEthBeforeFee", returnEthBeforeFee);
+        console.log("coinInfo.ethReserve", coinInfo.ethReserve);
+        console.log("coinInfo.coinsSold", coinInfo.coinsSold);
 
         // Calculate 1% fee
         uint256 fee = (returnEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
@@ -469,6 +468,11 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         return calculatePriceForCoins(coinAmount, currentSupply - coinAmount);
     }
 
+
+    function calcualteEthToGraduateBeforeFee(uint256 ethAmount) public pure returns (uint256) {
+        return ethAmount * 10000 / 9900;
+    }
+
     /**
      * @dev Internal function to graduate a coin to Uniswap V2
      * Mints graduation supply, pays fees, and adds liquidity to DEX
@@ -482,6 +486,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         }
 
         uint256 ownerFee = GRADUATION_FEE + fee;
+        console.log("ownerFee", ownerFee);
         // pay feeTo GRADUATION_FEE
         (bool successFeeTo,) = feeTo.call{ value: ownerFee }("");
         if (!successFeeTo) {
@@ -497,8 +502,9 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         FJC(coinAddress).mint(address(this), GRADUATE_SUPPLY);
 
         // remaining ETH used for liquidity
-        uint256 liquidityEthAfterFee = coinInfo.ethReserve - ownerFee - CREATOR_REWARD_FEE;
+        uint256 liquidityEthAfterFee = coinInfo.ethReserve - GRADUATION_FEE - CREATOR_REWARD_FEE;
 
+        console.log("liquidityEthAfterFee", liquidityEthAfterFee);
         // Allow dex to reach in and pull coins
         FJC(coinAddress).approve(address(router), GRADUATE_SUPPLY);
 
