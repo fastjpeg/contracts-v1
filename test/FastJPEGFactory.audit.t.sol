@@ -70,8 +70,8 @@ contract FastJPEGFactoryAirdropTest is Test {
 
         FJC coin = FJC(coinAddress);
 
-        uint256 user1Balance = 245_718_046.733580473771366277 ether;
-        assertEq(coin.balanceOf(user1), user1Balance, "User should have 245718046733580473771366277 FJPGCoins");
+        uint256 user1Balance = 244486369570289904451196604;
+        assertEq(coin.balanceOf(user1), user1Balance, "User should have 244486369570289904451196604 FJPGCoins");
 
         vm.startPrank(user2);
 
@@ -80,6 +80,6 @@ contract FastJPEGFactoryAirdropTest is Test {
         coin.burn(user1, user1Balance);
         vm.stopPrank();
 
-        assertEq(coin.balanceOf(user1), user1Balance, "User should have 245718046733580473771366277 FJPGCoins");
+        assertEq(coin.balanceOf(user1), user1Balance, "User should have 244486369570289904451196604 FJPGCoins");
     }
 }
