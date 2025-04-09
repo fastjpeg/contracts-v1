@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { console } from "forge-std/console.sol";
+// import { console } from "forge-std/console.sol";
 import { FJC } from "./FJC.sol";
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
@@ -213,7 +213,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         uint256 remainingEthForGraduation = GRADUATE_ETH - coinInfo.ethReserve;
         uint256 ethToGraduateBeforeFee = calcualteEthToGraduateBeforeFee(remainingEthForGraduation);
         uint256 fee = (msg.value * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
-        uint256 coinsToMint =  calculatePurchaseAmount(purchaseEth - fee, coinInfo.coinsSold);
+        uint256 coinsToMint = calculatePurchaseAmount(purchaseEth - fee, coinInfo.coinsSold);
         uint256 refundEth = 0;
 
         bool reachedGraduation = purchaseEth > ethToGraduateBeforeFee;
@@ -244,7 +244,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
             coinInfo.coinsSold += buyerCoins; // Update state for buyer coins
         }
 
-        coinInfo.ethReserve +=  purchaseEth - fee;
+        coinInfo.ethReserve += purchaseEth - fee;
         if (reachedGraduation) {
             // Ensure reserve doesn't exceed GRADUATE_ETH before calling graduate
             _graduateCoin(coinAddress, fee); // Fee passed to graduate function
@@ -344,18 +344,9 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         }
 
         uint256 currentSupply = FJC(coinAddress).totalSupply();
-        if (coinAmount > currentSupply) {
-            // This shouldn't happen if balance check passes, but good to have.
-            revert FastJPEGFactoryError.InsufficientBalance();
-        }
 
         // Calculate ETH to return based on the bonding curve
         uint256 returnEthBeforeFee = calculateSaleReturn(coinAmount, currentSupply);
-        console.log("currentSupply", currentSupply);
-        console.log("coinAmount", coinAmount);
-        console.log("returnEthBeforeFee", returnEthBeforeFee);
-        console.log("coinInfo.ethReserve", coinInfo.ethReserve);
-        console.log("coinInfo.coinsSold", coinInfo.coinsSold);
 
         // Calculate 1% fee
         uint256 fee = (returnEthBeforeFee * UNDERGRADUATE_FEE_BPS) / BPS_DENOMINATOR;
@@ -468,7 +459,6 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         return calculatePriceForCoins(coinAmount, currentSupply - coinAmount);
     }
 
-
     function calcualteEthToGraduateBeforeFee(uint256 ethAmount) public pure returns (uint256) {
         return ethAmount * 10000 / 9900;
     }
@@ -486,7 +476,6 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         }
 
         uint256 ownerFee = GRADUATION_FEE + fee;
-        console.log("ownerFee", ownerFee);
         // pay feeTo GRADUATION_FEE
         (bool successFeeTo,) = feeTo.call{ value: ownerFee }("");
         if (!successFeeTo) {
@@ -504,7 +493,6 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         // remaining ETH used for liquidity
         uint256 liquidityEthAfterFee = coinInfo.ethReserve - GRADUATION_FEE - CREATOR_REWARD_FEE;
 
-        console.log("liquidityEthAfterFee", liquidityEthAfterFee);
         // Allow dex to reach in and pull coins
         FJC(coinAddress).approve(address(router), GRADUATE_SUPPLY);
 
