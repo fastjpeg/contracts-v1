@@ -248,6 +248,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         if (reachedGraduation) {
             // Ensure reserve doesn't exceed GRADUATE_ETH before calling graduate
             _graduateCoin(coinAddress, fee); // Fee passed to graduate function
+
         } else {
             // Send fee if not graduating
             (bool successFeeTo,) = feeTo.call{ value: fee }("");
