@@ -97,7 +97,7 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         address indexed sender, address indexed coin, uint256 amountA, uint256 amountB, uint256 volume, Side side
     );
     event AirdropCoin(address indexed coin, address indexed recipient, uint256 amount);
-    event GraduateCoin(address indexed coin);
+    event GraduateCoin(address indexed coin, address indexed pool);
 
     /**
      * @dev Initializes the contract with the provided DEX factory, router, and fee recipient
@@ -430,9 +430,9 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         uint256 sumUnderRoot = term1 + term2;
 
         // Take square root and subtract currentSupply
-        uint256 newCoinSupply = Math.sqrt(sumUnderRoot);
+        uint256 newSupply = Math.sqrt(sumUnderRoot);
 
-        return newCoinSupply > currentSupply ? newCoinSupply - currentSupply : 0;
+        return newSupply > currentSupply ? newSupply - currentSupply : 0;
     }
 
     /**
@@ -515,13 +515,15 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
         // Burn the liquidity provider coins that are returned
         address wethAddress = address(router.WETH());
         address lpCoinAddress = poolFactory.getPair(coinAddress, wethAddress);
+        // Set the pool address in coin info
+        coinInfo.poolAddress = lpCoinAddress;
         IERC20(lpCoinAddress).approve(address(router), liquidity);
         SafeERC20.safeTransfer(IERC20(lpCoinAddress), BURN_ADDRESS, liquidity);
 
         // Transfer ownership to null address
         FJC(coinAddress).renounceOwnership();
         coinInfo.isGraduated = true;
-        emit GraduateCoin(coinAddress);
+        emit GraduateCoin(coinAddress, lpCoinAddress);
     }
 
     /**
