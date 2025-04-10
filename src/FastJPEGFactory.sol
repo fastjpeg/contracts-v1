@@ -64,8 +64,6 @@ contract FastJPEGFactory is Ownable, ReentrancyGuard {
     uint256 public constant GRADUATION_FEE = 0.5 ether; // 0.5 ETH to graduate coin
     uint256 public constant CREATOR_REWARD_FEE = 0.1 ether; // 0.1 ETH to creator
 
-    uint256 public constant AIRDROP_ETH = 2 ether; // 2 ETH to airdrop
-
     // Fee recipient address
     address public feeTo;
 
