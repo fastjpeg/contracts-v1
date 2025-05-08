@@ -19,6 +19,8 @@ cd fastjpeg-contracts
 ## Install Foundey
 curl -L https://foundry.paradigm.xyz | bash
 foundryup
+forge build
+
 
 ## Install SVM
 cargo install svm-rs
