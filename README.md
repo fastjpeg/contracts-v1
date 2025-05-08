@@ -9,11 +9,18 @@
 </div>
 
 
-### Install SVM
+### Setup project
 
 ```sh
+## Clone
 git clone https://github.com/fastjpeg/fastjpeg-contracts
 cd fastjpeg-contracts
+
+## Install Foundey
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+
+## Install SVM
 cargo install svm-rs
 svm install 0.5.16
 svm install 0.6.6
